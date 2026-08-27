@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grest Organizator</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.1/dist/xlsx.full.min.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- Intestazione / Menu in Alto a Destra -->
+    <div class="top-right-menu">
+        <button id="menuToggle" type="button" aria-expanded="false">Menu</button>
+        <div class="top-right-dropdown" id="menuDropdown" aria-hidden="true">
+            <a href="index_grest.html" class="dropdown-item">Pagina principale/Attività</a>
+            <a href="animatori_grest.html" class="dropdown-item">Animatori squadre</a>
+            <a href="avvisi_grest.html" class="dropdown-item">Avvisi</a>
+            <a href="admin_grest.html" class="dropdown-item">Admin</a>
+        </div>
+    </div>
+
+    <!-- Modal/Card Login Admin -->
+    <div class="login-card" id="loginCard">
+        <h3>Accesso Amministratore</h3>
+        <input type="password" id="adminPassword" placeholder="Inserisci password">
+        <div class="button-row">
+            <button type="button" onclick="window.location.href='index_grest.html'">Indietro</button>
+            <button type="button" id="loginButton">Accedi</button>
+        </div>
+        <p id="loginError" class="error-message"></p>
+    </div>
+
+    <!-- Contenuto Admin principale -->
+    <div class="container" id="adminContent" style="display: none;">
+        <h1>Gestione GREST <span class="current-year"></span></h1>
+        
+        <div class="admin-grid">
+            <!-- Card 1: Aggiungi Animatore -->
+            <div class="card form-card">
+                <h3>Aggiungi Nuovo Animatore</h3>
+                <input type="text" id="nomeAnimatore" placeholder="Nome">
+                <input type="text" id="cognomeAnimatore" placeholder="Cognome">
+                
+                <select id="ruoloAnimatore">
+                    <option value="animatore">Animatore</option>
+                    <option value="capo squadra">Capo Squadra</option>
+                    <option value="responsabile">Responsabile</option>
+                </select>
+
+                <div class="checkbox-group-wrapper">
+                    <label><strong>Settimane di presenza:</strong></label>
+                    <div class="checkbox-group">
+                        <label><input type="checkbox" class="settimana-chk" value="1"> Sett. 1</label>
+                        <label><input type="checkbox" class="settimana-chk" value="2"> Sett. 2</label>
+                        <label><input type="checkbox" class="settimana-chk" value="3"> Sett. 3</label>
+                    </div>
+                </div>
+                
+                <button onclick="aggiungiAnimatore()">Salva Animatore</button>
+            </div>
+
+            <!-- Card 2: Calendario -->
+            <div class="card calendar-card">
+                <div class="calendar-header">
+                    <button type="button" id="prevMonth">‹</button>
+                    <div>
+                        <h3>Calendario</h3>
+                        <p id="calendarMonthLabel"></p>
+                    </div>
+                    <button type="button" id="nextMonth">›</button>
+                </div>
+                <div class="calendar-selected">
+                    <span>Data selezionata:</span>
+                    <strong id="selectedDateLabel">Nessuna</strong>
+                </div>
+                <table class="calendar-table">
+                    <thead>
+                        <tr>
+                            <th>Lun</th>
+                            <th>Mar</th>
+                            <th>Mer</th>
+                            <th>Gio</th>
+                            <th>Ven</th>
+                            <th>Sab</th>
+                            <th>Dom</th>
+                        </tr>
+                    </thead>
+                    <tbody id="calendarBody"></tbody>
+                </table>
+            </div>
+
+            <!-- Card 3: Lista Animatori -->
+            <div class="card">
+                <div class="listino-header-row">
+                    <h3 id="titoloLista">Lista Animatori</h3>
+                </div>
+                <ul id="listaAnimatori">
+                    <div class="table-wrapper">
+                        <table id="animatoriTable" class="animatori-table">
+                            <thead>
+                                <tr>
+                                    <th>Animatori:</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr><td colspan="4">Seleziona "Animatori di turno" dal menu.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </ul>
+            </div>
+        </div>
+
+        <div class="admin-actions-row">
+            <div class="card import-card">
+                <h3>Importa animatori da file</h3>
+                <p class="import-hint">Carica un file .xlsx, .xls, .csv o .txt con nome, cognome e disponibilità (ad esempio colonne separate da tab).</p>
+                <input type="file" id="importAnimatoriFile" accept=".txt,.csv,.tsv,.xls,.xlsx,.xlsm">
+                <button type="button" onclick="importaAnimatoriDaFile()">Importa animatori</button>
+            </div>
+            <div class="card import-card">
+                <h3>Importa lista attività</h3>
+                <p class="import-hint">Carica un file .txt con la lista delle attività e pubblicala per la pagina delle attività.</p>
+                <input type="file" id="importAttivitaFile" accept=".txt,.csv">
+                <button type="button" onclick="importaAttivitaDaFile()">Importa attività</button>
+            </div>
+        </div>
+        
+     <!-- Sezione Gestione Programma Attività -->
+    <div id="gestione-programma-section" class="admin-section">
+        <div class="gestione-layout">
+        
+        <!-- COLONNA 1 (SINISTRA): Scheda Dettagli Attività -->
+            <div id="pannello-dettagli" class="dettagli-panel nascosto">
+                <div class="dettagli-header">
+                    <h3 id="dettaglio-nome">Nome Attività</h3>
+                    <button id="chiudi-dettagli" onclick="chiudiDettagli()" title="Chiudi">✖</button>
+                </div>
+                <div class="dettagli-body">
+                    <div class="dettaglio-box">
+                        <span class="dettaglio-label">Dettagli</span>
+                        <p id="dettaglio-descrizione"></p>
+                    </div>
+                    <div class="dettaglio-box">
+                        <span class="dettaglio-label">Lista Materiali</span>
+                        <p id="dettaglio-materiali"></p>
+                    </div>
+                </div>
+                <button id="btn-aggiungi-prog" onclick="apriModalProgrammazione()">Aggiungi alla programmazione</button>
+            </div>
+
+            <!-- COLONNA 2 (CENTRO): Lista Attività per Categorie -->
+            <div class="colonna-lista">
+                <h3>Catalogo Attività</h3>
+                <ul id="ul-lista-attivita">
+                    <li class="attivita-vuota">Nessuna attività importata.</li>
+                </ul>
+            </div>
+
+            <!-- COLONNA 3 (DESTRA): Programmazione Settimanale -->
+            <div class="colonna-settimane">
+                <h3>Programmazione</h3>
+
+                <!-- Settimana 1 (index: 0) -->
+                <div class="accordion-settimana">
+                    <button class="accordion-header" onclick="toggleSettimana(this)">Settimana 1 <span>▼</span></button>
+                    <div class="accordion-content">
+                        <div class="giorno-slot" data-settimana="0" data-giorno="0"><strong>Lunedì</strong><div class="attivita-contenitore"></div></div>
+                        <div class="giorno-slot" data-settimana="0" data-giorno="1"><strong>Martedì</strong><div class="attivita-contenitore"></div></div>
+                        <div class="giorno-slot" data-settimana="0" data-giorno="2"><strong>Mercoledì</strong><div class="attivita-contenitore"></div></div>
+                        <div class="giorno-slot" data-settimana="0" data-giorno="3"><strong>Giovedì</strong><div class="attivita-contenitore"></div></div>
+                        <div class="giorno-slot" data-settimana="0" data-giorno="4"><strong>Venerdì</strong><div class="attivita-contenitore"></div></div>
+                    </div>
+                </div>
+            
+                <!-- Settimana 2 (index: 1) -->
+                <div class="accordion-settimana">
+                    <button class="accordion-header" onclick="toggleSettimana(this)">Settimana 2 <span>▼</span></button>
+                    <div class="accordion-content">
+                        <div class="giorno-slot" data-settimana="1" data-giorno="0"><strong>Lunedì</strong><div class="attivita-contenitore"></div></div>
+                        <div class="giorno-slot" data-settimana="1" data-giorno="1"><strong>Martedì</strong><div class="attivita-contenitore"></div></div>
+                        <div class="giorno-slot" data-settimana="1" data-giorno="2"><strong>Mercoledì</strong><div class="attivita-contenitore"></div></div>
+                        <div class="giorno-slot" data-settimana="1" data-giorno="3"><strong>Giovedì</strong><div class="attivita-contenitore"></div></div>
+                        <div class="giorno-slot" data-settimana="1" data-giorno="4"><strong>Venerdì</strong><div class="attivita-contenitore"></div></div>
+                    </div>
+                </div>
+            
+                <!-- Settimana 3 (index: 2) -->
+                <div class="accordion-settimana">
+                    <button class="accordion-header" onclick="toggleSettimana(this)">Settimana 3 <span>▼</span></button>
+                    <div class="accordion-content">
+                        <div class="giorno-slot" data-settimana="2" data-giorno="0"><strong>Lunedì</strong><div class="attivita-contenitore"></div></div>
+                        <div class="giorno-slot" data-settimana="2" data-giorno="1"><strong>Martedì</strong><div class="attivita-contenitore"></div></div>
+                        <div class="giorno-slot" data-settimana="2" data-giorno="2"><strong>Mercoledì</strong><div class="attivita-contenitore"></div></div>
+                        <div class="giorno-slot" data-settimana="2" data-giorno="3"><strong>Giovedì</strong><div class="attivita-contenitore"></div></div>
+                        <div class="giorno-slot" data-settimana="2" data-giorno="4"><strong>Venerdì</strong><div class="attivita-contenitore"></div></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+            <!-- Card Meteo del Giorno -->
+        <div class="card weather-card" style="width: 100%; margin-top: 20px;">
+            <div class="weather-header">
+                <h3>Meteo Oggi</h3>
+                <span class="weather-location">📍 Montevarchi</span>
+            </div>
+
+            <div class="weather-body">
+                <div class="weather-main">
+                    <span class="weather-icon" id="weatherIcon">☀️</span>
+                    <div class="weather-temp">
+                        <span class="temp-current" id="tempCurrent">--°C</span>
+                        <span class="temp-range" id="tempRange">Max --° / Min --°</span>
+                    </div>
+                </div>
+                <p class="weather-desc" id="weatherDesc">Caricamento previsioni...</p>
+            </div>
+        </div>
+
+        <div class="card register-card full-width">
+            <div class="register-header">
+                <h3>Registro Valutazioni Animatori</h3>
+                <div class="register-legend">
+                    <span class="badge badge-ottimo">🟢 Ottimo</span>
+                    <span class="badge badge-neutro">🟡 Neutro</span>
+                    <span class="badge badge-attento">🔴 Attento</span>
+                </div>
+            </div>
+
+            <div class="evaluation-day-selector">
+                <label for="evaluationDaySelect">Giorno di valutazione</label>
+                <select id="evaluationDaySelect">
+                    <option value="lunedi">Lunedì</option>
+                    <option value="martedi">Martedì</option>
+                    <option value="mercoledi">Mercoledì</option>
+                    <option value="giovedi">Giovedì</option>
+                    <option value="venerdi">Venerdì</option>
+                </select>
+            </div>
+
+            <div class="table-wrapper">
+                <table class="registro-table" id="registroValutazioniTable">
+                    <thead id="registroValutazioniHead"></thead>
+                    <tbody id="registroValutazioniBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="avvisiSection" class="card menu-section hidden">
+            <h3>Avvisi</h3>
+            <p id="avvisiContent">Nessun avviso al momento.</p>
+        </div>
+    </div>
+
+    <div id="editAnimatorModal" class="modal-backdrop hidden" aria-hidden="true">
+        <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="editAnimatorTitle">
+            <div class="modal-header">
+                <div>
+                    <h3 id="editAnimatorTitle">Modifica animatore</h3>
+                    <p class="modal-subtitle">Aggiorna settimane e ruolo dell’animatore.</p>
+                </div>
+                <button type="button" class="modal-close-2" onclick="chiudiModalModifica()">Chiudi</button>
+            </div>
+
+            <div class="modal-field-label">Animatore</div>
+            <p id="editAnimatorName" style="margin: 0; color: var(--text-muted);"></p>
+
+            <div class="modal-field-label">Settimane di presenza</div>
+            <div class="modal-week-group">
+                <label class="modal-inline-option"><input type="checkbox" id="editWeek1" value="1"> Sett. 1</label>
+                <label class="modal-inline-option"><input type="checkbox" id="editWeek2" value="2"> Sett. 2</label>
+                <label class="modal-inline-option"><input type="checkbox" id="editWeek3" value="3"> Sett. 3</label>
+            </div>
+
+            <div class="modal-field-label">Ruolo</div>
+            <select id="editRuolo">
+                <option value="animatore">Animatore</option>
+                <option value="capo squadra">Capo Squadra</option>
+                <option value="responsabile">Responsabile</option>
+            </select>
+
+            <label class="modal-inline-option">
+                <input type="checkbox" id="editGameRole">
+                Gestisce gioco
+            </label>
+
+            <div id="editDaySelectionWrapper" class="hidden" aria-hidden="true">
+                <div class="modal-field-label">Giorno</div>
+                <select id="editDaySelect">
+                    <option value="">Seleziona il giorno</option>
+                    <option value="Lunedì">Lunedì</option>
+                    <option value="Martedì">Martedì</option>
+                    <option value="Mercoledì">Mercoledì</option>
+                    <option value="Giovedì">Giovedì</option>
+                    <option value="Venerdì">Venerdì</option>
+                </select>
+            </div>
+
+            <div id="editGameSelectionWrapper" class="hidden" aria-hidden="true">
+                <div class="modal-field-label">Gioco del giorno</div>
+                <select id="editGameSelect">
+                   <option value="">Seleziona un gioco</option>
+                   
+                </select>
+                <p class="modal-help-text">Seleziona il giorno e il gioco che gestisce l'animatore.</p>
+            </div>
+
+            <div class="modal-actions">
+                <button type="button" class="secondary-btn" onclick="chiudiModalModifica()">Annulla</button>
+                <button type="button" onclick="salvaModificaAnimatore()">Salva</button>
+            </div>
+        </div>
+    </div>
+    <div id="modal-programmazione" class="modal-overlay nascosto">
+    <div class="modal-card-2">
+        <button class="modal-close-2" onclick="chiudiModalProgrammazione()">✖</button>
+        <div id="modal-step-content">
+            <!-- I passaggi verranno generati dinamicamente da JS -->
+        </div>
+    </div>
+</div>
+    <script src="app.js"></script>
+</body>
+</html>

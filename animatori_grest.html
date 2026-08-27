@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grest Organizator - Animatori</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Animatori GREST <span class="current-year"></span></h1>
+
+        <div class="top-right-menu">
+            <button id="menuToggle" type="button" aria-expanded="false">Menu</button>
+            <div class="top-right-dropdown" id="menuDropdown" aria-hidden="true">
+                <a href="index_grest.html" class="dropdown-item">Pagina principale/Attività</a>
+                <a href="animatori_grest.html" class="dropdown-item">Animatori squadre</a>
+                <a href="avvisi_grest.html" class="dropdown-item">Avvisi</a>
+                <a href="admin_grest.html" class="dropdown-item">Admin</a>
+            </div>
+        </div>
+
+        <div id="animatoriSection" class="card menu-section">
+            <div class="animatori-grid">
+                <div class="animatori-left-panel">
+                    <div class="section-controls">
+                        <label for="weekSelect">Seleziona settimana</label>
+                        <select id="weekSelect">
+                            <option value="1">Settimana 1</option>
+                            <option value="2">Settimana 2</option>
+                            <option value="3">Settimana 3</option>
+                        </select>
+                        <span id="weekRangeLabel" class="week-range">15/06 - 21/06</span>
+                    </div>
+                    <article class="activity-card animatori-summary">
+                        <span class="activity-card__tag">Settimana</span>
+                        <h3>Dettagli selezione</h3>
+                        <p>Settimana: <strong id="selectedWeekLabel">1</strong></p>
+                        <p>Periodo: <strong id="selectedWeekRange">15/06 - 21/06</strong></p>
+                        <p>La tabella a destra mostra gli animatori presenti e la loro squadra.</p>
+                    </article>
+                </div>
+                <div class="animatori-right-panel">
+                    <article class="activity-card animatori-list-card">
+                        <h3 id="titoloLista">Lista Animatori Attuali</h3>
+                        <div class="table-wrapper">
+                            <table id="animatoriTable" class="animatori-table">
+                                <thead>
+                                    <tr>
+                                        <th>Nominativo</th>
+                                        <th>Squadra</th>
+                                        <th>Ruolo</th>
+                                        <th>Presente</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr><td colspan="4">Seleziona "Animatori di turno" dal menu.</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </article>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grest Organizator - Selezione account</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Selezione account</h1>
+
+        <div class="top-right-menu">
+            <button id="menuToggle" type="button" aria-expanded="false">Menu</button>
+            <div class="top-right-dropdown" id="menuDropdown" aria-hidden="true">
+                <a href="selezione_account.html" class="dropdown-item">Aggiorna</a>
+                <a href="index_grest.html" class="dropdown-item">Pagina principale</a>
+                <a href="animatori_grest.html" class="dropdown-item">Animatori squadre</a>
+                <a href="avvisi_grest.html" class="dropdown-item">Avvisi</a>
+                <a href="admin_grest.html" class="dropdown-item">Admin</a>
+            </div>
+        </div>
+
+        <div class="account-grid" id="accountCards">
+            <div class="account-loading">Caricamento account...</div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

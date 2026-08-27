@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grest Organizator</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="container">
+        
+        <h1>Gestione GREST <span class="current-year"></span></h1>
+
+        
+        <div class="top-right-menu">
+            <button id="menuToggle" type="button" aria-expanded="false">Menu</button>
+            <div class="top-right-dropdown" id="menuDropdown" aria-hidden="true">
+                <a href="index_grest.html" class="dropdown-item">Pagina principale/Attività</a>
+                <a href="animatori_grest.html" class="dropdown-item">Animatori squadre</a>
+                <a href="avvisi_grest.html" class="dropdown-item">Avvisi</a>
+                <a href="admin_grest.html" class="dropdown-item">Admin</a>
+            </div>
+        </div>
+
+        <div id="homeCard" class="card menu-section home-dashboard">
+            <div class="dashboard-header">
+                <div class="dashboard-row">
+                    <div class="dashboard-panel account-chooser-panel">
+                        <div class="account-chooser-label">
+                            <label>Account animatore</label>
+                            <a href="selezione_account.html" class="button small">Scegli account</a>
+                        </div>
+                        <p id="currentAccountLabel">Nessun account selezionato</p>
+                    </div>
+                    <div class="dashboard-panel">
+                        <label for="activityDate">Seleziona giorno</label>
+                        <input type="date" id="activityDate">
+                    </div>
+                </div>
+            </div>
+
+            <div class="dashboard-grid">
+                <section class="info-card">
+                    <h3>Account</h3>
+                    <p id="selectedAccountName">Nessun account selezionato</p>
+                    <p id="selectedAccountRole">Ruolo: -</p>
+                    <p id="selectedAccountTeam">Squadra: -</p>
+                </section>
+                <section class="info-card">
+                    <h3>Squadra e componenti</h3>
+                    <p id="teamInfo">Seleziona un account per vedere la squadra.</p>
+                    <ul id="teamMembers" class="team-members"></ul>
+                </section>
+                <section class="info-card">
+                    <h3>Piscina</h3>
+                    <p id="poolInfo">Seleziona un account e un giorno per controllare la piscina.</p>
+                </section>
+                <section class="info-card">
+                    <h3>Arbitraggio e gioco</h3>
+                    <p id="refereeInfo">-</p>
+                    <hr>
+                    <p id="dailyGameInfo">-</p>
+                </section>
+                <section class="info-card menu-card">
+                    <h3>Menu mensa</h3>
+                    <p id="menuInfo">-</p>
+                    <p id="allergyInfo">-</p>
+                </section>
+            </div>
+
+            <section class="mood-card">
+                <h3>Andamento animatore</h3>
+                <div class="mood-grid" id="moodGrid">
+                    <article class="face-card" data-mood="happy">
+                        <span class="face-icon">😊</span>
+                        <span class="face-label">Ottimo</span>
+                    </article>
+                    <article class="face-card" data-mood="neutral">
+                        <span class="face-icon">😐</span>
+                        <span class="face-label">Stabile</span>
+                    </article>
+                    <article class="face-card" data-mood="sad">
+                        <span class="face-icon">😟</span>
+                        <span class="face-label">Attenzione</span>
+                    </article>
+                </div>
+                <p id="behaviorMessage">Seleziona un account per vedere l’andamento.</p>
+            </section>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
