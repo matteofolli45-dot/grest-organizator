@@ -915,6 +915,24 @@ function filtraAnimatori(query) {
 /**
  * Aggiunta di un nuovo animatore nel Database
  */
+
+// INSERIMENTO (Lascia la password al DB ma la recupera con .select())
+    const { data: nuovoRecord, error } = await sb
+        .from('animatori')
+        .insert([{
+            nome,
+            cognome,
+            ruolo,
+            squadra: squadra ? parseInt(squadra) : null,
+            settimana: settimaneSelezionate
+        }])
+        .select('Password'); // <-- Fatti restituire la password generata dal DB
+
+    if (!error && nuovoRecord && nuovoRecord.length > 0) {
+        const passDB = nuovoRecord[0].Password;
+        mostraNotifica(`Animatore ${nominativo_animatore} salvato! Password: ${passDB}`, 'success');
+    }
+
 async function aggiungiAnimatore() {
     if (!sb) {
         alert("Client Supabase non pronto.");
@@ -956,7 +974,7 @@ async function aggiungiAnimatore() {
         return; // Blocchiamo l'inserimento
     }
 
-    // --- Proseguiamo con il tuo codice originale per le settimane ---
+    // --- Controllo settimane ---
     const checkboxes = document.querySelectorAll('.settimana-chk');
     const settimaneSelezionate = [];
     checkboxes.forEach(chk => {
@@ -968,15 +986,19 @@ async function aggiungiAnimatore() {
         return;
     }
 
-    // 3. INSERIMENTO SE IL CONTROLLO HA ESITO POSITIVO
+    // 3. GENERAZIONE DELLA PASSWORD CASUALE
+    const passwordGenerata = generaPasswordCasuale(8);
+
+    // 4. INSERIMENTO IN DATABASE CON LA PASSWORD
     const { error } = await sb
         .from('animatori')
         .insert([{
             nome,
             cognome,
             ruolo,
-            squadra: squadra ? parseInt(squadra) : null, // Convertiamo in numero per sicurezza
-            settimana: settimaneSelezionate
+            squadra: squadra ? parseInt(squadra) : null,
+            settimana: settimaneSelezionate,
+            Password: passwordGenerata // <-- Salviamo la password generata
         }]);
 
     if (error) {
@@ -989,7 +1011,9 @@ async function aggiungiAnimatore() {
         if (selectSquadra) selectSquadra.value = "";
         checkboxes.forEach(chk => chk.checked = false);
 
-        mostraNotifica(`Animatore ${nominativo_animatore} salvato con successo!`, 'success');
+        // Notifica visibile all'admin con la password generata
+        mostraNotifica(`Animatore ${nominativo_animatore} salvato! Password: ${passwordGenerata}`, 'success');
+        
         await loadAnimatoriAccounts();
         mostraAnimatori();
     }
