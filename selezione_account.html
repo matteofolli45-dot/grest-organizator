@@ -27,6 +27,21 @@
         </div>
     </div>
 
+    <!-- MODALE RICHIESTA PASSWORD -->
+    <div id="passwordModal" class="modal-overlay">
+        <div class="modal-box">
+            <h2 id="modalTitle">Inserisci Password</h2>
+            <form id="passwordForm" onsubmit="confermaPasswordAccount(event)">
+                <input type="password" id="inputPasswordAccount" placeholder="Password" required autocomplete="current-password">
+                <div id="passwordError" class="error-msg">Password non corretta!</div>
+                <div class="modal-actions">
+                    <button type="button" class="btn-cancel" onclick="chiudiModalPassword()">Annulla</button>
+                    <button type="submit" class="btn-confirm">Accedi</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script src="app.js"></script>
 </body>
 </html>

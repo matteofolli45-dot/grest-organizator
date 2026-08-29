@@ -916,29 +916,13 @@ function filtraAnimatori(query) {
  * Aggiunta di un nuovo animatore nel Database
  */
 
-// INSERIMENTO (Lascia la password al DB ma la recupera con .select())
-    const { data: nuovoRecord, error } = await sb
-        .from('animatori')
-        .insert([{
-            nome,
-            cognome,
-            ruolo,
-            squadra: squadra ? parseInt(squadra) : null,
-            settimana: settimaneSelezionate
-        }])
-        .select('Password'); // <-- Fatti restituire la password generata dal DB
-
-    if (!error && nuovoRecord && nuovoRecord.length > 0) {
-        const passDB = nuovoRecord[0].Password;
-        mostraNotifica(`Animatore ${nominativo_animatore} salvato! Password: ${passDB}`, 'success');
-    }
-
 async function aggiungiAnimatore() {
     if (!sb) {
         alert("Client Supabase non pronto.");
         return;
     }
 
+    // 1. RECUPERO E VALIDAZIONE DATI DAL FORM
     const inputNome = document.getElementById('nomeAnimatore');
     const inputCognome = document.getElementById('cognomeAnimatore');
     const selectRuolo = document.getElementById('ruoloAnimatore');
@@ -954,27 +938,7 @@ async function aggiungiAnimatore() {
         return;
     }
 
-    // 1. CREAZIONE DEL NOMINATIVO PER IL CONTROLLO
-    const nominativo_animatore = `${nome} ${cognome}`;
-
-    // 2. CONTROLLO SE L'ANIMATORE È GIÀ PRESENTE IN DATABASE
-    const { data: giaPresente, error: checkError } = await sb
-        .from('animatori')
-        .select('id_animatore')
-        .ilike('nominativo', nominativo_animatore);
-
-    if (checkError) {
-        mostraNotifica(`Errore durante il controllo duplicati: ` + checkError.message, 'error');
-        console.error("Errore check:", checkError);
-        return;
-    }
-
-    if (giaPresente && giaPresente.length > 0) {
-        mostraNotifica(`L'animatore "${nominativo_animatore}" è già presente nel sistema!`, 'error');
-        return; // Blocchiamo l'inserimento
-    }
-
-    // --- Controllo settimane ---
+    // 2. CONTROLLO SETTIMANE SELEZIONATE
     const checkboxes = document.querySelectorAll('.settimana-chk');
     const settimaneSelezionate = [];
     checkboxes.forEach(chk => {
@@ -986,11 +950,29 @@ async function aggiungiAnimatore() {
         return;
     }
 
-    // 3. GENERAZIONE DELLA PASSWORD CASUALE
+    // 3. CONTROLLO DUPLICATI NEL DATABASE
+    const nominativo_animatore = `${nome} ${cognome}`;
+    const { data: giaPresente, error: checkError } = await sb
+        .from('animatori')
+        .select('id_animatore')
+        .ilike('nominativo', nominativo_animatore);
+
+    if (checkError) {
+        mostraNotifica(`Errore durante il controllo duplicati: ${checkError.message}`, 'error');
+        console.error("Errore check:", checkError);
+        return;
+    }
+
+    if (giaPresente && giaPresente.length > 0) {
+        mostraNotifica(`L'animatore "${nominativo_animatore}" è già presente nel sistema!`, 'error');
+        return;
+    }
+
+    // 4. GENERAZIONE PASSWORD E UNICO INSERIMENTO
+
     const passwordGenerata = generaPasswordCasuale(8);
 
-    // 4. INSERIMENTO IN DATABASE CON LA PASSWORD
-    const { error } = await sb
+    const { error: insertError } = await sb
         .from('animatori')
         .insert([{
             nome,
@@ -998,27 +980,35 @@ async function aggiungiAnimatore() {
             ruolo,
             squadra: squadra ? parseInt(squadra) : null,
             settimana: settimaneSelezionate,
-            Password: passwordGenerata // <-- Salviamo la password generata
+            Password: passwordGenerata
         }]);
 
-    if (error) {
-        mostraNotifica(`Errore durante il salvataggio: ` + error.message, 'error');
-        console.error(error);
+    // 5. GESTIONE ESITO
+    if (insertError) {
+        mostraNotifica(`Errore durante il salvataggio: ${insertError.message}`, 'error');
+        console.error(insertError);
     } else {
-        // Reset campi
+        // Reset campi form
         if (inputNome) inputNome.value = "";
         if (inputCognome) inputCognome.value = "";
         if (selectSquadra) selectSquadra.value = "";
         checkboxes.forEach(chk => chk.checked = false);
 
-        // Notifica visibile all'admin con la password generata
         mostraNotifica(`Animatore ${nominativo_animatore} salvato! Password: ${passwordGenerata}`, 'success');
         
-        await loadAnimatoriAccounts();
-        mostraAnimatori();
+        if (typeof loadAnimatoriAccounts === 'function') await loadAnimatoriAccounts();
+        if (typeof mostraAnimatori === 'function') mostraAnimatori();
     }
 }
 
+function generaPasswordCasuale(lunghezza = 8) {
+    const caratteri = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    let pass = '';
+    for (let i = 0; i < lunghezza; i++) {
+        pass += caratteri.charAt(Math.floor(Math.random() * caratteri.length));
+    }
+    return pass;
+}
 /**
  * Eliminazione di un animatore dal Database
  */
@@ -1155,14 +1145,196 @@ function renderAccountCards() {
         const initials = createInitials(animatore.nome, animatore.cognome);
         const accountId = encodeURIComponent(animatore.id);
         return `
-            <a class="account-card" href="index_grest.html?selectedAccountId=${accountId}" data-account-id="${animatore.id}">
+            <div class="account-card" onclick="apriModalPassword('${animatore.id}')" style="cursor: pointer;">
                 <div class="account-initials">${initials}</div>
                 <h3>${animatore.nome || '-'} ${animatore.cognome || '-'}</h3>
                 <p>${animatore.ruolo || 'Animatore'}</p>
-            </a>
+            </div>
         `;
     }).join('');
 }
+
+function apriModalPassword(accountId) {
+    const animatore = animatoriAccounts.find(acc => String(acc.id) === String(accountId));
+    if (!animatore) return;
+
+    accountSelezionatoTemporaneo = animatore;
+
+    const modalTitle = document.getElementById('modalTitle');
+    const inputPass = document.getElementById('inputPasswordAccount');
+    const errDiv = document.getElementById('passwordError');
+
+    if (modalTitle) modalTitle.textContent = `Password per ${animatore.nome} ${animatore.cognome}`;
+    if (inputPass) inputPass.value = '';
+    if (errDiv) errDiv.style.display = 'none';
+
+    const modal = document.getElementById('passwordModal');
+    if (modal) modal.classList.add('active');
+    
+    setTimeout(() => { if (inputPass) inputPass.focus(); }, 100);
+}
+
+function chiudiModalPassword() {
+    accountSelezionatoTemporaneo = null;
+    const modal = document.getElementById('passwordModal');
+    if (modal) modal.classList.remove('active');
+}
+
+function confermaPasswordAccount(event) {
+    if (event) event.preventDefault();
+    if (!accountSelezionatoTemporaneo) return;
+
+    const inputPass = document.getElementById('inputPasswordAccount');
+    const errDiv = document.getElementById('passwordError');
+    const passwordInserita = inputPass ? inputPass.value.trim() : '';
+
+    // Legge la password dal DB (accetta sia "Password" che "password")
+    const passwordCorretta = accountSelezionatoTemporaneo.Password || accountSelezionatoTemporaneo.password || '';
+
+    // Se nel DB la password è vuota/NULL oppure corrisponde a quella inserita dall'utente
+    if (!passwordCorretta || passwordInserita === passwordCorretta) {
+        const accountId = encodeURIComponent(accountSelezionatoTemporaneo.id);
+        
+        // Salva in Storage
+        try {
+            localStorage.setItem('selectedAccountId', accountSelezionatoTemporaneo.id);
+            sessionStorage.setItem('selectedAccountId', accountSelezionatoTemporaneo.id);
+        } catch (e) { console.error(e); }
+
+        // Reindirizza alla pagina principale con l'ID selezionato
+        window.location.href = `index_grest.html?selectedAccountId=${accountId}`;
+    } else {
+        // Password errata
+        if (errDiv) {
+            errDiv.style.display = 'block';
+            errDiv.textContent = 'Password non corretta!';
+        }
+        if (inputPass) inputPass.select();
+    }
+}
+
+window.apriModalPassword = apriModalPassword;
+window.chiudiModalPassword = chiudiModalPassword;
+window.confermaPasswordAccount = confermaPasswordAccount;
+
+// --- GESTIONE CAMBIO PASSWORD ---
+
+async function apriModalCambiaPassword() {
+    const modal = document.getElementById('cambiaPasswordModal');
+    const select = document.getElementById('selectAnimatoreCambio');
+    const msg = document.getElementById('msgCambioPassword');
+    
+    // Form reset
+    document.getElementById('inputVecchiaPassword').value = '';
+    document.getElementById('inputNuovaPassword').value = '';
+    if (msg) msg.style.display = 'none';
+
+    // Assicurati che gli animatori siano caricati
+    if (typeof loadAnimatoriAccounts === 'function' && (!window.animatoriAccounts || !window.animatoriAccounts.length)) {
+        await loadAnimatoriAccounts();
+    }
+
+    const lista = window.animatoriAccounts || [];
+    if (select) {
+        if (!lista.length) {
+            select.innerHTML = '<option value="">Nessun animatore disponibile</option>';
+        } else {
+            // Se c'è un account già selezionato in localStorage, lo imposta come default
+            const accountSelezionatoId = localStorage.getItem('selectedAccountId') || sessionStorage.getItem('selectedAccountId');
+            
+            select.innerHTML = '<option value="">-- Seleziona un animatore --</option>' + 
+                lista.map(a => {
+                    const isSelected = String(a.id) === String(accountSelezionatoId) ? 'selected' : '';
+                    return `<option value="${a.id_animatore || a.id}" ${isSelected}>${a.nome || ''} ${a.cognome || ''}</option>`;
+                }).join('');
+        }
+    }
+
+    if (modal) modal.classList.add('active');
+}
+
+function chiudiModalCambiaPassword() {
+    const modal = document.getElementById('cambiaPasswordModal');
+    if (modal) modal.classList.remove('active');
+}
+
+async function eseguiCambioPassword(event) {
+    if (event) event.preventDefault();
+    
+    const select = document.getElementById('selectAnimatoreCambio');
+    const inputVecchia = document.getElementById('inputVecchiaPassword');
+    const inputNuova = document.getElementById('inputNuovaPassword');
+    const msg = document.getElementById('msgCambioPassword');
+
+    const idAnimatore = select ? select.value : '';
+    const vecchiaPassword = inputVecchia ? inputVecchia.value.trim() : '';
+    const nuovaPassword = inputNuova ? inputNuova.value.trim() : '';
+
+    if (!idAnimatore) {
+        mostraMessaggioModal('Seleziona un animatore!', 'error');
+        return;
+    }
+
+    if (!nuovaPassword) {
+        mostraMessaggioModal('Inserisci la nuova password!', 'error');
+        return;
+    }
+
+    try {
+        // 1. Recupera l'animatore dal database per verificare la vecchia password
+        const { data: animatore, error: fetchError } = await sb
+            .from('animatori')
+            .select('*')
+            .or(`id_animatore.eq.${idAnimatore},id.eq.${idAnimatore}`)
+            .single();
+
+        if (fetchError || !animatore) {
+            mostraMessaggioModal('Animatore non trovato nel database.', 'error');
+            return;
+        }
+
+        const passwordAttualeDB = animatore.Password || animatore.password || '';
+
+        // 2. Se l'animatore ha già una password, verifica che quella inserita sia corretta (se inserita)
+        if (passwordAttualeDB && vecchiaPassword && passwordAttualeDB !== vecchiaPassword) {
+            mostraMessaggioModal('La password attuale inserita non è corretta!', 'error');
+            return;
+        }
+
+        // 3. Aggiorna la password nel database
+        const targetId = animatore.id_animatore || animatore.id;
+        const { error: updateError } = await sb
+            .from('animatori')
+            .update({ Password: nuovaPassword })
+            .eq(animatore.id_animatore ? 'id_animatore' : 'id', targetId);
+
+        if (updateError) {
+            mostraMessaggioModal('Errore durante l\'aggiornamento: ' + updateError.message, 'error');
+        } else {
+            mostraMessaggioModal('Password aggiornata con successo!', 'success');
+            setTimeout(() => {
+                chiudiModalCambiaPassword();
+            }, 1500);
+        }
+
+    } catch (err) {
+        console.error("Errore cambio password:", err);
+        mostraMessaggioModal('Errore di connessione al database.', 'error');
+    }
+}
+
+function mostraMessaggioModal(testo, tipo) {
+    const msg = document.getElementById('msgCambioPassword');
+    if (!msg) return;
+    msg.textContent = testo;
+    msg.className = `msg-box ${tipo}`;
+    msg.style.display = 'block';
+}
+
+// Esponiamo le funzioni allo scope globale per gli eventi inline HTML
+window.apriModalCambiaPassword = apriModalCambiaPassword;
+window.chiudiModalCambiaPassword = chiudiModalCambiaPassword;
+window.eseguiCambioPassword = eseguiCambioPassword;
 
 function getSelectedAccount() {
     const urlParams = new URLSearchParams(window.location.search);

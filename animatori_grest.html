@@ -17,7 +17,9 @@
                 <a href="index_grest.html" class="dropdown-item">Pagina principale/Attività</a>
                 <a href="animatori_grest.html" class="dropdown-item">Animatori squadre</a>
                 <a href="avvisi_grest.html" class="dropdown-item">Avvisi</a>
-                <a href="admin_grest.html" class="dropdown-item">Admin</a>
+                <a href="admin_grest.html" class="dropdown-item">Admin</a>                
+                <!-- PULSANTE CAMBIA PASSWORD -->
+                <button type="button" class="btn-change-pass" onclick="apriModalCambiaPassword()">Cambia Password</button>
             </div>
         </div>
 
@@ -39,6 +41,8 @@
                         <p>Settimana: <strong id="selectedWeekLabel">1</strong></p>
                         <p>Periodo: <strong id="selectedWeekRange">15/06 - 21/06</strong></p>
                         <p>La tabella a destra mostra gli animatori presenti e la loro squadra.</p>
+                        
+                        
                     </article>
                 </div>
                 <div class="animatori-right-panel">
@@ -62,6 +66,34 @@
                     </article>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- MODALE CAMBIA PASSWORD -->
+    <div id="cambiaPasswordModal" class="modal-overlay">
+        <div class="modal-box">
+            <h2>Cambia Password</h2>
+            <form id="formCambiaPassword" onsubmit="eseguiCambioPassword(event)">
+                <div class="form-group">
+                    <label for="selectAnimatoreCambio">Seleziona Animatore</label>
+                    <select id="selectAnimatoreCambio" required>
+                        <option value="">Caricamento...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="inputVecchiaPassword">Password Attuale (lascia vuoto se dimenticata)</label>
+                    <input type="password" id="inputVecchiaPassword" placeholder="Inserisci password attuale">
+                </div>
+                <div class="form-group">
+                    <label for="inputNuovaPassword">Nuova Password</label>
+                    <input type="password" id="inputNuovaPassword" placeholder="Inserisci nuova password" required minlength="4">
+                </div>
+                <div id="msgCambioPassword" class="msg-box"></div>
+                <div class="modal-actions">
+                    <button type="button" class="btn-cancel" onclick="chiudiModalCambiaPassword()">Annulla</button>
+                    <button type="submit" class="btn-confirm">Salva</button>
+                </div>
+            </form>
         </div>
     </div>
 
