@@ -1083,6 +1083,29 @@ function aggiornaFileAttivitaTxt() {
 // 5. Account, Dashboard e Attività
 // ==========================================
 
+document.addEventListener('DOMContentLoaded', () => {
+    const menuToggle = document.getElementById('menuToggle');
+    const menuDropdown = document.getElementById('menuDropdown');
+
+    if (menuToggle && menuDropdown) {
+        menuToggle.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const isOpen = menuDropdown.classList.contains('show') || menuToggle.getAttribute('aria-expanded') === 'true';
+            
+            menuToggle.setAttribute('aria-expanded', !isOpen);
+            menuDropdown.setAttribute('aria-hidden', isOpen);
+            menuDropdown.classList.toggle('show');
+        });
+
+        // Chiudi il menu se si clicca fuori
+        document.addEventListener('click', () => {
+            menuToggle.setAttribute('aria-expanded', 'false');
+            menuDropdown.setAttribute('aria-hidden', 'true');
+            menuDropdown.classList.remove('show');
+        });
+    }
+});
+
 function getAccountId(animatore) {
     if (!animatore) return '';
     if (animatore.id) return String(animatore.id);
@@ -1219,35 +1242,30 @@ window.confermaPasswordAccount = confermaPasswordAccount;
 
 // --- GESTIONE CAMBIO PASSWORD ---
 
+// Recupera il nominativo leggendolo direttamente dall'elemento HTML
+function getNominativoCorrente() {
+    const el = document.getElementById('currentAccountLabel');
+    return el ? el.textContent.trim() : null;
+}
+
 async function apriModalCambiaPassword() {
     const modal = document.getElementById('cambiaPasswordModal');
-    const select = document.getElementById('selectAnimatoreCambio');
+    const labelNome = document.getElementById('nomeAnimatoreLoggato');
     const msg = document.getElementById('msgCambioPassword');
     
-    // Form reset
     document.getElementById('inputVecchiaPassword').value = '';
     document.getElementById('inputNuovaPassword').value = '';
     if (msg) msg.style.display = 'none';
 
-    // Assicurati che gli animatori siano caricati
-    if (typeof loadAnimatoriAccounts === 'function' && (!window.animatoriAccounts || !window.animatoriAccounts.length)) {
-        await loadAnimatoriAccounts();
+    const nominativo = getNominativoCorrente();
+
+    if (!nominativo) {
+        alert("Impossibile identificare l'account corrente dall'etichetta.");
+        return;
     }
 
-    const lista = window.animatoriAccounts || [];
-    if (select) {
-        if (!lista.length) {
-            select.innerHTML = '<option value="">Nessun animatore disponibile</option>';
-        } else {
-            // Se c'è un account già selezionato in localStorage, lo imposta come default
-            const accountSelezionatoId = localStorage.getItem('selectedAccountId') || sessionStorage.getItem('selectedAccountId');
-            
-            select.innerHTML = '<option value="">-- Seleziona un animatore --</option>' + 
-                lista.map(a => {
-                    const isSelected = String(a.id) === String(accountSelezionatoId) ? 'selected' : '';
-                    return `<option value="${a.id_animatore || a.id}" ${isSelected}>${a.nome || ''} ${a.cognome || ''}</option>`;
-                }).join('');
-        }
+    if (labelNome) {
+        labelNome.textContent = nominativo;
     }
 
     if (modal) modal.classList.add('active');
@@ -1261,17 +1279,21 @@ function chiudiModalCambiaPassword() {
 async function eseguiCambioPassword(event) {
     if (event) event.preventDefault();
     
-    const select = document.getElementById('selectAnimatoreCambio');
     const inputVecchia = document.getElementById('inputVecchiaPassword');
     const inputNuova = document.getElementById('inputNuovaPassword');
-    const msg = document.getElementById('msgCambioPassword');
+    const nominativo = getNominativoCorrente();
 
-    const idAnimatore = select ? select.value : '';
+    if (!nominativo) {
+        mostraMessaggioModal('Nessun animatore selezionato o identificato.', 'error');
+        return;
+    }
+
     const vecchiaPassword = inputVecchia ? inputVecchia.value.trim() : '';
     const nuovaPassword = inputNuova ? inputNuova.value.trim() : '';
 
-    if (!idAnimatore) {
-        mostraMessaggioModal('Seleziona un animatore!', 'error');
+    // 1. Validazione input obbligatori
+    if (!vecchiaPassword) {
+        mostraMessaggioModal('Inserisci la password attuale!', 'error');
         return;
     }
 
@@ -1280,41 +1302,45 @@ async function eseguiCambioPassword(event) {
         return;
     }
 
+    if (nuovaPassword.length < 4) {
+        mostraMessaggioModal('La nuova password deve contenere almeno 4 caratteri!', 'error');
+        return;
+    }
+
     try {
-        // 1. Recupera l'animatore dal database per verificare la vecchia password
-        const { data: animatore, error: fetchError } = await sb
+        // 2. Recupera l'animatore dal DB tramite il nominativo
+        const { data: dbUser, error: fetchError } = await sb
             .from('animatori')
             .select('*')
-            .or(`id_animatore.eq.${idAnimatore},id.eq.${idAnimatore}`)
-            .single();
+            .eq('nominativo', nominativo)
+            .maybeSingle();
 
-        if (fetchError || !animatore) {
-            mostraMessaggioModal('Animatore non trovato nel database.', 'error');
+        if (fetchError || !dbUser) {
+            mostraMessaggioModal('Account non trovato nel database.', 'error');
             return;
         }
 
-        const passwordAttualeDB = animatore.Password || animatore.password || '';
+        const passDB = dbUser.Password || dbUser.password || '';
 
-        // 2. Se l'animatore ha già una password, verifica che quella inserita sia corretta (se inserita)
-        if (passwordAttualeDB && vecchiaPassword && passwordAttualeDB !== vecchiaPassword) {
+        // 3. CONTROLLO RIGIDO: La password attuale deve coincidere perfettamente
+        if (vecchiaPassword !== passDB) {
             mostraMessaggioModal('La password attuale inserita non è corretta!', 'error');
             return;
         }
 
-        // 3. Aggiorna la password nel database
-        const targetId = animatore.id_animatore || animatore.id;
+        // 4. Aggiornamento password nel DB
         const { error: updateError } = await sb
             .from('animatori')
             .update({ Password: nuovaPassword })
-            .eq(animatore.id_animatore ? 'id_animatore' : 'id', targetId);
+            .eq('id_animatore', dbUser.id_animatore);
 
         if (updateError) {
-            mostraMessaggioModal('Errore durante l\'aggiornamento: ' + updateError.message, 'error');
+            mostraMessaggioModal('Errore salvataggio: ' + updateError.message, 'error');
         } else {
             mostraMessaggioModal('Password aggiornata con successo!', 'success');
             setTimeout(() => {
                 chiudiModalCambiaPassword();
-            }, 1500);
+            }, 1200);
         }
 
     } catch (err) {
@@ -1331,7 +1357,6 @@ function mostraMessaggioModal(testo, tipo) {
     msg.style.display = 'block';
 }
 
-// Esponiamo le funzioni allo scope globale per gli eventi inline HTML
 window.apriModalCambiaPassword = apriModalCambiaPassword;
 window.chiudiModalCambiaPassword = chiudiModalCambiaPassword;
 window.eseguiCambioPassword = eseguiCambioPassword;
@@ -2879,3 +2904,64 @@ function generaTestoAttivita() {
         .map(r => `${r.dataStr} - ${r.fascia}: ${r.nome}`)
         .join('\n');
 }  
+
+// Salva i turni associandoli al giorno selezionato (es. 'martedi')
+
+function salvaTurniPiscina() {
+    const giorno = document.getElementById('piscinaGiorno').value;
+    if (!giorno) return;
+
+    const turni = {
+        mattina: [
+            document.getElementById('piscinaMattina1').value,
+            document.getElementById('piscinaMattina2').value
+        ],
+        pomeriggio: [
+            document.getElementById('piscinaPomeriggio1').value,
+            document.getElementById('piscinaPomeriggio2').value
+        ]
+    };
+
+    localStorage.setItem('piscina_giorno_' + giorno.toLowerCase(), JSON.stringify(turni));
+    alert(`Turni piscina per ${giorno.toUpperCase()} salvati con successo!`);
+}
+
+// Carica i menu a tendina quando l'admin cambia il giorno selezionato
+
+function caricaTurniPiscinaPerGiorno(giorno) {
+    if (!giorno) return;
+    const datiSalvati = localStorage.getItem('piscina_giorno_' + giorno.toLowerCase());
+    if (datiSalvati) {
+        const turni = JSON.parse(datiSalvati);
+        document.getElementById('piscinaMattina1').value = turni.mattina[0] || "";
+        document.getElementById('piscinaMattina2').value = turni.mattina[1] || "";
+        document.getElementById('piscinaPomeriggio1').value = turni.pomeriggio[0] || "";
+        document.getElementById('piscinaPomeriggio2').value = turni.pomeriggio[1] || "";
+    } else {
+        document.getElementById('piscinaMattina1').value = "";
+        document.getElementById('piscinaMattina2').value = "";
+        document.getElementById('piscinaPomeriggio1').value = "";
+        document.getElementById('piscinaPomeriggio2').value = "";
+    }
+}
+
+// Funzione Helper: controlla se la squadra dell'animatore va in piscina nella data selezionata
+function getTurnoPiscinaSquadra(nomeSquadra, date) {
+    if (!nomeSquadra || !date) return null;
+
+    const dateObj = (date instanceof Date) ? date : new Date(date);
+    const giornoSettimana = dateObj.toLocaleDateString('it-IT', { weekday: 'long' }).toLowerCase();
+
+    const datiSalvati = localStorage.getItem('piscina_giorno_' + giornoSettimana);
+    if (!datiSalvati) return null;
+
+    const turni = JSON.parse(datiSalvati);
+    const sqClean = nomeSquadra.trim().toLowerCase();
+
+    const inMattina = turni.mattina.some(s => s.trim().toLowerCase() === sqClean);
+    const inPomeriggio = turni.pomeriggio.some(s => s.trim().toLowerCase() === sqClean);
+
+    if (inMattina) return 'Mattina';
+    if (inPomeriggio) return 'Pomeriggio';
+    return null;
+}

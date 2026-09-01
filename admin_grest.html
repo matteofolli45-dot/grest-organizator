@@ -34,7 +34,7 @@
 
     <!-- Contenuto Admin principale -->
     <div class="container" id="adminContent" style="display: none;">
-        <h1>Gestione GREST <span class="current-year"></span></h1>
+        <h1>Gestione GREST <span class="current-year"></span></h1></br>
         
         <div class="admin-grid">
             <!-- Card 1: Aggiungi Animatore -->
@@ -202,6 +202,68 @@
         </div>
     </div>
 
+            <!--piscina-->
+        <div class="card" id="gestione-programma-section">
+            <h3> Gestione Turni Piscina</h3>
+            <p>Seleziona le squadre che andranno in piscina nel giorno selezionato:</p>
+
+            <!-- Selezione Giorno della Settimana -->
+            <div style="margin-bottom: 15px;">
+                <label><strong style="color: var(--accent);">Seleziona Giorno:</strong></label>
+                <select id="piscinaGiorno" onchange="caricaTurniPiscinaPerGiorno(this.value)" style="padding: 5px; max-width: 25%; margin-left: 115px;">
+                    <option value="martedi">Martedì</option>
+                    <option value="giovedi">Giovedì</option>
+                </select>
+            </div>
+            <!-- Turno Mattina -->
+            <div style="margin-bottom: 15px; padding: 10px; background: rgba(0,0,0,0.1); border-radius: 8px;">
+                <strong style="color:var(--accent);">Mattina (2 squadre)</strong><br><br>
+                <label>Squadra 1:</label>
+                <select id="piscinaMattina1">
+                    <option value="">Nessuna</option>
+                    <option value="rossi">Rossi</option>
+                    <option value="blu">Blu</option>
+                    <option value="gialli">Gialli</option>
+                    <option value="verdi">Verdi</option>
+                </select>
+            
+                <label >Squadra 2:</label>
+                <select id="piscinaMattina2">
+                    <option value="">Nessuna</option>
+                    <option value="rossi">Rossi</option>
+                    <option value="blu">Blu</option>
+                    <option value="gialli">Gialli</option>
+                    <option value="verdi">Verdi</option>
+                </select>
+            </div>
+        
+            <!-- Turno Pomeriggio -->
+            <div style="padding: 10px; background: rgba(0,0,0,0.1); border-radius: 8px;">
+                <strong style="color:var(--accent);">Pomeriggio (2 squadre)</strong><br><br>
+                <label>Squadra 1:</label>
+                <select id="piscinaPomeriggio1">
+                    <option value="">Nessuna</option>
+                    <option value="rossi">Rossi</option>
+                    <option value="blu">Blu</option>
+                    <option value="gialli">Gialli</option>
+                    <option value="verdi">Verdi</option>
+                </select>
+            
+                <label>Squadra 2:</label>
+                <select id="piscinaPomeriggio2">
+                    <option value="">Nessuna</option>
+                    <option value="rossi">Rossi</option>
+                    <option value="blu">Blu</option>
+                    <option value="gialli">Gialli</option>
+                    <option value="verdi">Verdi</option>
+                </select>
+            </div>
+            
+            <button onclick="salvaTurniPiscina()">
+                 Salva Turni Piscina
+            </button>
+        </div>
+
             <!-- Card Meteo del Giorno -->
         <div class="card weather-card" style="width: 100%; margin-top: 20px;">
             <div class="weather-header">
@@ -221,6 +283,8 @@
             </div>
         </div>
 
+
+            <!-- Registro Valutazioni Animatori -->
         <div class="card register-card full-width">
             <div class="register-header">
                 <h3>Registro Valutazioni Animatori</h3>
