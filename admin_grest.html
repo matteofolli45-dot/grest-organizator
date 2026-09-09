@@ -17,7 +17,8 @@
             <a href="index_grest.html" class="dropdown-item">Pagina principale/Attività</a>
             <a href="animatori_grest.html" class="dropdown-item">Animatori squadre</a>
             <a href="avvisi_grest.html" class="dropdown-item">Avvisi</a>
-            <a href="admin_grest.html" class="dropdown-item">Admin</a>
+            <a href="grest-rush.html" class="dropdown-item">Grest Rush</a>
+            <a href="admin_grest.html" class="dropdown-item">Aggiorna</a>
         </div>
     </div>
 
@@ -112,6 +113,8 @@
                 </ul>
             </div>
         </div>
+        
+        
 
         <div class="admin-actions-row">
             <div class="card import-card">
@@ -202,7 +205,8 @@
         </div>
     </div>
 
-            <!--piscina-->
+            <!-- Gestione Piscina e Squadre -->
+        <div class="pool-team-layout">
         <div class="card" id="gestione-programma-section">
             <h3> Gestione Turni Piscina</h3>
             <p>Seleziona le squadre che andranno in piscina nel giorno selezionato:</p>
@@ -210,7 +214,7 @@
             <!-- Selezione Giorno della Settimana -->
             <div style="margin-bottom: 15px;">
                 <label><strong style="color: var(--accent);">Seleziona Giorno:</strong></label>
-                <select id="piscinaGiorno" onchange="caricaTurniPiscinaPerGiorno(this.value)" style="padding: 5px; max-width: 25%; margin-left: 115px;">
+                <select id="piscinaGiorno" onchange="caricaTurniPiscinaPerGiorno(this.value)" style="padding: 5px; max-width: 25%; margin-left: 70px;">
                     <option value="martedi">Martedì</option>
                     <option value="giovedi">Giovedì</option>
                 </select>
@@ -258,10 +262,30 @@
                     <option value="verdi">Verdi</option>
                 </select>
             </div>
-            
+        </br>
             <button onclick="salvaTurniPiscina()">
                  Salva Turni Piscina
             </button>
+        </div>
+
+        <div class="card register-card team-assignment-card" style="margin-top: 20px;">
+            <div class="register-header">
+                <h3>Imposta Squadre Animatori</h3>
+                <span class="register-legend">Assegna ogni animatore</span>
+            </div>
+
+            <div class="table-wrapper">
+                <table class="registro-table" id="assegnazioneSquadreTable">
+                    <thead>
+                        <tr>
+                            <th class="col-animatore">Animatore</th>
+                            <th>Squadra</th>
+                        </tr>
+                    </thead>
+                    <tbody id="assegnazioneSquadreBody"></tbody>
+                </table>
+            </div>
+        </div>
         </div>
 
             <!-- Card Meteo del Giorno -->
@@ -314,9 +338,17 @@
             </div>
         </div>
 
-        <div id="avvisiSection" class="card menu-section hidden">
-            <h3>Avvisi</h3>
-            <p id="avvisiContent">Nessun avviso al momento.</p>
+        <div class="card register-card full-width" style="margin-top: 20px;">
+            <div class="register-header">
+                <h3>Gestione Avvisi</h3>
+                <span class="register-legend">Comunica con animatori e staff</span>
+            </div>
+
+            <div style="margin-bottom: 20px; padding: 15px; background: rgba(0,0,0,0.05); border-radius: 8px;">
+                <label for="adminAvvisoInput"><strong>Inserisci nuovo avviso:</strong></label>
+                <input id="adminAvvisoInput" placeholder="Scrivi il tuo avviso qui..." style="width: 100%; min-height: 80px; padding: 10px; margin: 10px 0; border-radius: 4px; border: 1px solid #ccc; font-family: inherit;">
+                <button onclick="salvaAvvisoAdmin()" type="button" style="background: var(--accent); color: white; padding: 8px 20px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">Pubblica Avviso</button>
+            </div>
         </div>
     </div>
 

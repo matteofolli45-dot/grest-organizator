@@ -17,16 +17,33 @@
                 <a href="index_grest.html" class="dropdown-item">Pagina principale/Attività</a>
                 <a href="animatori_grest.html" class="dropdown-item">Animatori squadre</a>
                 <a href="avvisi_grest.html" class="dropdown-item">Avvisi</a>
+                <a href="grest-rush.html" class="dropdown-item">Grest Rush</a>
                 <a href="admin_grest.html" class="dropdown-item">Admin</a>
             </div>
         </div>
 
         <div id="avvisiSection" class="card menu-section">
             <h3>Avvisi</h3></br>
-            <article class="activity-card">
-                <p id="avvisiContent">Nessun avviso al momento.</p>
-            </article>
+            
+            <div style="margin-bottom: 20px;">
+                <h4>Avvisi Odierni</h4>
+                <div id="avvisiOdierniContent" class="activity-card" style="min-height: 60px;">
+                    <p style="color: #999;">Nessun avviso per oggi.</p>
+                </div>
+            </div>
+
+            <div style="margin-bottom: 20px; padding: 15px; background: rgba(0,0,0,0.05); border-radius: 8px;">
+                <label for="avvisoInput"><strong>Inserisci un nuovo avviso:</strong></label>
+                <input id="avvisoInput" placeholder="Scrivi il tuo avviso qui..." style="width: 100%; min-height: 60px; padding: 10px; margin: 10px 0; border-radius: 4px; border: 1px solid #ccc; font-family: inherit;">
+                <button id="refreshButton" type="button" style="background: var(--accent); color: white; padding: 8px 20px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">Invia Avviso</button>
+            </div>
         </div>
+            <div class="card">
+                <h4>Storico Avvisi (Ordine Cronologico)</h4>
+                <div id="avvisiStoricoContent" style="max-height: 400px; overflow-y: auto;">
+                    <p style="color: #999;">Nessun avviso nel registro.</p>
+                </div>
+            </div>
     </div>
 
     <script src="app.js"></script>

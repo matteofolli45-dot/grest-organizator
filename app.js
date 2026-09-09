@@ -53,6 +53,8 @@ const DAILY_EVALUATION_STORAGE_KEY = 'grest_daily_evaluations_v1';
 // Stato della paginazione animatori
 let paginaCorrenteAnimatori = 1;
 const ANIMATORI_PER_PAGINA = 5;
+let paginaCorrenteSquadre = 1;
+const ANIMATORI_SQUADRE_PER_PAGINA = 6;
 
 const monthNames = [
     'Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno',
@@ -483,6 +485,9 @@ async function mostraAnimatori() {
         
         if (typeof renderRegistroValutazioni === 'function') {
             renderRegistroValutazioni(animatoriCorrenti);
+        }
+        if (typeof renderAssegnazioneSquadre === 'function') {
+            renderAssegnazioneSquadre(animatoriCorrenti);
         }
 
     } catch (err) {
@@ -1537,9 +1542,15 @@ async function updateDashboard() {
     }
 
     if (poolInfo) {
-        poolInfo.textContent = isPoolDay(date)
-            ? `Oggi la tua squadra (${account.squadra || ''}) va in piscina!`
-            : 'Oggi la squadra non è programmata per la piscina.';
+        const squadra = (account.squadra || '').trim();
+        const squadraValida = squadra && squadra !== '-' && squadra.toLowerCase() !== 'nessuna';
+        const turnoPiscina = squadraValida ? getTurnoPiscinaSquadra(squadra, date) : null;
+
+        poolInfo.textContent = !squadraValida
+            ? 'Devi far parte di una squadra per sapere il risultato della piscina.'
+            : turnoPiscina
+                ? `Risultato piscina: la squadra ${squadra} è in piscina il ${turnoPiscina.toLowerCase()}.`
+                : 'Risultato piscina: oggi non si è in piscina.';
     }
 
     if (menuInfo) menuInfo.textContent = await getMenuTextForDate(date, account);
@@ -2950,18 +2961,133 @@ function getTurnoPiscinaSquadra(nomeSquadra, date) {
     if (!nomeSquadra || !date) return null;
 
     const dateObj = (date instanceof Date) ? date : new Date(date);
-    const giornoSettimana = dateObj.toLocaleDateString('it-IT', { weekday: 'long' }).toLowerCase();
+    const giornoSettimana = dateObj.toLocaleDateString('it-IT', { weekday: 'long' })
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 
     const datiSalvati = localStorage.getItem('piscina_giorno_' + giornoSettimana);
     if (!datiSalvati) return null;
 
     const turni = JSON.parse(datiSalvati);
     const sqClean = nomeSquadra.trim().toLowerCase();
+    const appartieneAllaSquadra = valore => String(valore || '').trim().toLowerCase() === sqClean;
 
-    const inMattina = turni.mattina.some(s => s.trim().toLowerCase() === sqClean);
-    const inPomeriggio = turni.pomeriggio.some(s => s.trim().toLowerCase() === sqClean);
+    const inMattina = turni.mattina.some(appartieneAllaSquadra);
+    const inPomeriggio = turni.pomeriggio.some(appartieneAllaSquadra);
 
     if (inMattina) return 'Mattina';
     if (inPomeriggio) return 'Pomeriggio';
     return null;
+}
+
+function renderAssegnazioneSquadre(listaAnimatori) {
+    const tbody = document.getElementById('assegnazioneSquadreBody');
+    if (!tbody) return;
+
+    const squadreDisponibili = [...new Set([
+        ...(animatoriAccounts || []).map(animatore => animatore.squadra),
+        ...(listaAnimatori || []).map(animatore => animatore.squadra)
+    ].filter(squadra => squadra !== null && squadra !== undefined && String(squadra).trim() !== ''))]
+        .map(String)
+        .sort((a, b) => a.localeCompare(b, 'it', { numeric: true }));
+
+    if (!listaAnimatori || listaAnimatori.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="2" style="text-align:center; padding:15px; color:#888;">Nessun animatore presente.</td></tr>';
+        aggiornaPaginazioneSquadre(0);
+        return;
+    }
+
+    const totalePagine = Math.ceil(listaAnimatori.length / ANIMATORI_SQUADRE_PER_PAGINA);
+    if (paginaCorrenteSquadre > totalePagine) paginaCorrenteSquadre = totalePagine;
+
+    const inizio = (paginaCorrenteSquadre - 1) * ANIMATORI_SQUADRE_PER_PAGINA;
+    const animatoriPagina = listaAnimatori.slice(inizio, inizio + ANIMATORI_SQUADRE_PER_PAGINA);
+
+    tbody.innerHTML = animatoriPagina.map(animatore => {
+        const nomeCompleto = `${animatore.nome || ''} ${animatore.cognome || ''}`.trim();
+        const animatoreId = getAccountId(animatore);
+        const squadra = animatore.squadra === null || animatore.squadra === undefined
+            ? ''
+            : String(animatore.squadra);
+        const opzioniSquadre = squadreDisponibili
+            .map(nomeSquadra => `<option value="${nomeSquadra.replace(/"/g, '&quot;')}" ${squadra === nomeSquadra ? 'selected' : ''}>${nomeSquadra}</option>`)
+            .join('');
+
+        return `
+            <tr>
+                <td class="col-animatore"><strong>${nomeCompleto}</strong></td>
+                <td>
+                    <select id="squadra-${animatoreId}" aria-label="Squadra di ${nomeCompleto}" onchange="salvaSquadraAnimatore('${animatoreId}')">
+                        <option value="" ${squadra ? '' : 'selected'}>Nessuna squadra</option>
+                        ${opzioniSquadre}
+                    </select>
+                </td>
+            </tr>
+        `;
+    }).join('');
+    aggiornaPaginazioneSquadre(totalePagine);
+}
+
+function aggiornaPaginazioneSquadre(totalePagine) {
+    const tabella = document.getElementById('assegnazioneSquadreTable');
+    if (!tabella) return;
+
+    let paginazione = document.getElementById('assegnazioneSquadrePagination');
+    if (!paginazione) {
+        paginazione = document.createElement('div');
+        paginazione.id = 'assegnazioneSquadrePagination';
+        paginazione.className = 'pagination-container';
+        tabella.parentNode.insertBefore(paginazione, tabella.nextSibling);
+    }
+
+    if (totalePagine <= 1) {
+        paginazione.innerHTML = '';
+        paginazione.style.display = 'none';
+        return;
+    }
+
+    paginazione.style.display = 'flex';
+    const dots = Array.from({ length: totalePagine }, (_, indice) => {
+        const pagina = indice + 1;
+        const attiva = pagina === paginaCorrenteSquadre ? 'active' : '';
+        return `<span class="pagination-dot ${attiva}" onclick="cambiaPaginaSquadre(${pagina})"></span>`;
+    }).join('');
+
+    paginazione.innerHTML = `
+        <button type="button" class="pagination-btn" ${paginaCorrenteSquadre === 1 ? 'disabled' : ''} onclick="cambiaPaginaSquadre(${paginaCorrenteSquadre - 1})">&#10094;</button>
+        <div class="pagination-dots">${dots}</div>
+        <button type="button" class="pagination-btn" ${paginaCorrenteSquadre === totalePagine ? 'disabled' : ''} onclick="cambiaPaginaSquadre(${paginaCorrenteSquadre + 1})">&#10095;</button>
+    `;
+}
+
+function cambiaPaginaSquadre(nuovaPagina) {
+    paginaCorrenteSquadre = nuovaPagina;
+    renderAssegnazioneSquadre(animatoriCorrenti);
+}
+
+async function salvaSquadraAnimatore(animatoreId) {
+    if (!sb) {
+        mostraNotifica('Connessione a Supabase non disponibile.', 'error');
+        return;
+    }
+
+    const select = document.getElementById(`squadra-${animatoreId}`);
+    const animatore = animatoriCorrenti.find(item => String(getAccountId(item)) === String(animatoreId));
+    if (!select || !animatore) return;
+
+    const squadra = select.value || null;
+    const { error } = await sb
+        .from('animatori')
+        .update({ squadra })
+        .eq('id_animatore', animatore.id_animatore);
+
+    if (error) {
+        console.error('Errore assegnazione squadra:', error);
+        mostraNotifica('Errore durante il salvataggio della squadra.', 'error');
+        return;
+    }
+
+    animatore.squadra = squadra;
+    mostraNotifica('Squadra assegnata con successo.', 'success');
+    renderAssegnazioneSquadre(animatoriCorrenti);
+    renderTabellaAnimatori(animatoriCorrenti, true);
 }
