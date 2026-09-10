@@ -119,13 +119,17 @@
         <div class="admin-actions-row">
             <div class="card import-card">
                 <h3>Importa animatori da file</h3>
-                <p class="import-hint">Carica un file .xlsx, .xls, .csv o .txt con nome, cognome e disponibilità (ad esempio colonne separate da tab).</p>
+                <p class="import-hint">Carica un file .xlsx, .xls, .csv o .txt con nome, cognome e disponibilità (ad esempio colonne separate da tab).
+                    <br> <code>Nome | Cognome | 1,2,3 (con più settimane di disponibilità separare i numeri con la virgola)</code>
+                </p>
                 <input type="file" id="importAnimatoriFile" accept=".txt,.csv,.tsv,.xls,.xlsx,.xlsm">
                 <button type="button" onclick="importaAnimatoriDaFile()">Importa animatori</button>
             </div>
             <div class="card import-card">
                 <h3>Importa lista attività</h3>
-                <p class="import-hint">Carica un file .txt con la lista delle attività e pubblicala per la pagina delle attività.</p>
+                <p class="import-hint">Carica un file .txt con la lista delle attività e pubblicala per la pagina delle attività.
+                    <br> <code>Tipo di attività; | Nome attività; | Descrizione attività; | <br>Materiale necessario (separati con virgole)</code>
+                </p>
                 <input type="file" id="importAttivitaFile" accept=".txt,.csv">
                 <button type="button" onclick="importaAttivitaDaFile()">Importa attività</button>
             </div>

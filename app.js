@@ -486,8 +486,8 @@ async function mostraAnimatori() {
         if (typeof renderRegistroValutazioni === 'function') {
             renderRegistroValutazioni(animatoriCorrenti);
         }
-        if (typeof renderAssegnazioneSquadre === 'function') {
-            renderAssegnazioneSquadre(animatoriCorrenti);
+        if (typeof initAssegnazioneSquadre === 'function') {
+        await initAssegnazioneSquadre(animatoriCorrenti);
         }
 
     } catch (err) {
@@ -2213,8 +2213,6 @@ async function importaAnimatoriDaFile() {
     }
 }
 
-
-
 async function importaListaAttivitaDaFile() {
     const input = document.getElementById('importAttivitaFile'); // Controlla che questo ID sia corretto nel tuo HTML
     const file = input?.files?.[0];
@@ -2979,16 +2977,45 @@ function getTurnoPiscinaSquadra(nomeSquadra, date) {
     return null;
 }
 
+
+//======================================//
+
+// Cache in memoria delle squadre caricate dal DB
+let squadreCorrenti = [];
+
+async function caricaSquadre() {
+    if (!sb) return [];
+    const { data, error } = await sb
+        .from('squadre')
+        .select('id_squadra, nome, numero_membri_tot, punteggio, piscina')
+        .order('nome', { ascending: true });
+
+    console.log('SQUADRE →', { data, error }); // DEBUG temporaneo
+
+    if (error) {
+        console.error('Errore caricamento squadre:', error);
+        mostraNotifica('Errore durante il caricamento delle squadre.', 'error');
+        return [];
+    }
+    squadreCorrenti = data || [];
+    return squadreCorrenti;
+}
+
+// Da chiamare quando apri la sezione "Imposta Squadre Animatori",
+// PRIMA della prima renderAssegnazioneSquadre
+async function initAssegnazioneSquadre(listaAnimatori) {
+    await caricaSquadre();
+    renderAssegnazioneSquadre(listaAnimatori);
+}
+
+//======================================//
+
+
+
+
 function renderAssegnazioneSquadre(listaAnimatori) {
     const tbody = document.getElementById('assegnazioneSquadreBody');
     if (!tbody) return;
-
-    const squadreDisponibili = [...new Set([
-        ...(animatoriAccounts || []).map(animatore => animatore.squadra),
-        ...(listaAnimatori || []).map(animatore => animatore.squadra)
-    ].filter(squadra => squadra !== null && squadra !== undefined && String(squadra).trim() !== ''))]
-        .map(String)
-        .sort((a, b) => a.localeCompare(b, 'it', { numeric: true }));
 
     if (!listaAnimatori || listaAnimatori.length === 0) {
         tbody.innerHTML = '<tr><td colspan="2" style="text-align:center; padding:15px; color:#888;">Nessun animatore presente.</td></tr>';
@@ -3005,11 +3032,12 @@ function renderAssegnazioneSquadre(listaAnimatori) {
     tbody.innerHTML = animatoriPagina.map(animatore => {
         const nomeCompleto = `${animatore.nome || ''} ${animatore.cognome || ''}`.trim();
         const animatoreId = getAccountId(animatore);
-        const squadra = animatore.squadra === null || animatore.squadra === undefined
+        const squadraAssegnata = animatore.squadra === null || animatore.squadra === undefined
             ? ''
             : String(animatore.squadra);
-        const opzioniSquadre = squadreDisponibili
-            .map(nomeSquadra => `<option value="${nomeSquadra.replace(/"/g, '&quot;')}" ${squadra === nomeSquadra ? 'selected' : ''}>${nomeSquadra}</option>`)
+
+        const opzioniSquadre = squadreCorrenti
+            .map(sq => `<option value="${sq.id_squadra}" ${squadraAssegnata === String(sq.id_squadra) ? 'selected' : ''}>${sq.nome}</option>`)
             .join('');
 
         return `
@@ -3017,7 +3045,7 @@ function renderAssegnazioneSquadre(listaAnimatori) {
                 <td class="col-animatore"><strong>${nomeCompleto}</strong></td>
                 <td>
                     <select id="squadra-${animatoreId}" aria-label="Squadra di ${nomeCompleto}" onchange="salvaSquadraAnimatore('${animatoreId}')">
-                        <option value="" ${squadra ? '' : 'selected'}>Nessuna squadra</option>
+                        <option value="" ${squadraAssegnata ? '' : 'selected'}>Nessuna squadra</option>
                         ${opzioniSquadre}
                     </select>
                 </td>
@@ -3074,7 +3102,7 @@ async function salvaSquadraAnimatore(animatoreId) {
     const animatore = animatoriCorrenti.find(item => String(getAccountId(item)) === String(animatoreId));
     if (!select || !animatore) return;
 
-    const squadra = select.value || null;
+    const squadra = select.value ? Number(select.value) : null;
     const { error } = await sb
         .from('animatori')
         .update({ squadra })
@@ -3091,3 +3119,746 @@ async function salvaSquadraAnimatore(animatoreId) {
     renderAssegnazioneSquadre(animatoriCorrenti);
     renderTabellaAnimatori(animatoriCorrenti, true);
 }
+
+
+///////////////////////////////////////
+///                                 ///
+///          GREST-RUSH             ///
+///                                 ///
+///////////////////////////////////////
+
+(function(){
+  const canvas = document.getElementById('game');
+  const ctx = canvas.getContext('2d');
+  ctx.imageSmoothingEnabled = false;
+ 
+  const W = canvas.width;
+  const H = canvas.height;
+ 
+  const LANES = 3;
+  const TRACK_MARGIN = 30;
+  const TRACK_WIDTH = W - TRACK_MARGIN * 2;
+  const LANE_WIDTH = TRACK_WIDTH / LANES;
+  function laneX(lane){ return TRACK_MARGIN + LANE_WIDTH * lane + LANE_WIDTH / 2; }
+ 
+  const PLAYER_Y = H - 55;
+  const BASE_SPEED = 85;
+  const MAX_SPEED = 230;
+  const GRAVITY = 1100; // Gravità per una caduta fluida
+
+  // ---------- characters ----------
+  const CHARACTERS = [
+    {
+      id: 'runner', name: 'IL CORRIDORE', ability: 'none', abilityName: 'EQUILIBRATO',
+      abilityDesc: 'Nessun potere speciale: solido e affidabile per iniziare.',
+      baseColors: { jacket: '#c77dff', hair: '#2b2d42', skin: '#ffcc99' }
+    },
+    {
+      id: 'jumper', name: 'GIOVANNI BECATTINI', ability: 'doubleJump', abilityName: 'GRAN SALTO',
+      abilityDesc: 'Salta il doppio più in alto per scavalcare qualsiasi ostacolo!',
+      baseColors: { jacket: '#ff6b6b', hair: '#1a1a2e', skin: '#ffd8a8' }
+    },
+    {
+      id: 'tank', name: 'CORAZZATO', ability: 'shield', abilityName: 'SCUDO',
+      abilityDesc: 'Assorbe un colpo senza finire la corsa. Si ricarica ad ogni partenza.',
+      baseColors: { jacket: '#ffd166', hair: '#3d2c5e', skin: '#f4a259' }
+    },
+    {
+      id: 'magnet', name: 'MATTIA MELA', ability: 'magnet', abilityName: 'ATTIRA-MONETE',
+      abilityDesc: 'Ruba monete anche dalle corsie accanto alla tua.',
+      baseColors: { jacket: '#4ecdc4', hair: '#22223b', skin: '#ffe0ac' }
+    }
+  ];
+ 
+  let selectedIndex = 0;
+  function currentCharacter(){ return CHARACTERS[selectedIndex]; }
+ 
+  let state = 'menu';
+  let score = 0, highScore = 0, coinsCollected = 0;
+  let distance = 0, speed = BASE_SPEED, elapsed = 0;
+  let spawnDistanceNext = 150;
+  let hitFlash = 0;
+  let lastTime = 0;
+ 
+  let player = {
+    lane: 1, x: laneX(1), status: 'run', timer: 0, legFrame: 0, legTimer: 0,
+    jumpOffset: 0, vy: 0, jumpImpulse: 320,
+    ability: 'none', maxJumps: 1, jumpsUsed: 0, shields: 0, invuln: 0,
+    colors: CHARACTERS[0].baseColors
+  };
+  let obstacles = [];
+  let coins = [];
+  let particles = [];
+ 
+  const buildingsLeft = [ {h:36,w:14,seed:0}, {h:58,w:18,seed:80}, {h:28,w:12,seed:150}, {h:46,w:16,seed:210} ];
+  const buildingsRight = [ {h:50,w:16,seed:20}, {h:30,w:12,seed:100}, {h:60,w:18,seed:170}, {h:38,w:14,seed:230} ];
+  const SCENERY_PERIOD = 260;
+ 
+  // ---------- icon editor ----------
+  const GRID_COLS = 28, GRID_ROWS = 36;
+  const EDITOR_PALETTE = ['#ffffff','#f4f1de','#ffd700','#ff9f1c','#e63946','#ff6b6b','#c77dff',
+    '#4ecdc4','#06d6a0','#118ab2','#3d2c5e','#22223b','#2b2d42','#8d5524','#ffcc99','#000000'];
+ 
+  function generateDefaultIconGrid(character){
+    const g = Array.from({length: GRID_ROWS}, () => new Array(GRID_COLS).fill(null));
+    const { jacket, hair, skin } = character.baseColors;
+    for(let r=1; r<=5; r++) for(let c=3; c<=10; c++) g[r][c] = hair;
+    for(let r=5; r<=11; r++) for(let c=4; c<=9; c++) g[r][c] = skin;
+    g[7][5] = '#22223b'; g[7][8] = '#22223b';
+    for(let r=11; r<=12; r++) for(let c=5; c<=8; c++) g[r][c] = skin;
+    for(let r=12; r<=17; r++) for(let c=1; c<=12; c++) g[r][c] = jacket;
+    return g;
+  }
+ 
+  let iconGrids = {};
+ 
+  async function loadIconGrid(id){
+    try{
+      const res = localStorage.getItem('metro-rush-icon-' + id);
+      if(res) return JSON.parse(res);
+    }catch(e){}
+    return null;
+  }
+  
+  async function saveIconGrid(id, grid){
+    try{ 
+      localStorage.setItem('metro-rush-icon-' + id, JSON.stringify(grid)); 
+    }catch(e){}
+  }   
+  
+  async function ensureIconLoaded(character){
+    if(iconGrids[character.id]) return iconGrids[character.id];
+    const stored = await loadIconGrid(character.id);
+    iconGrids[character.id] = stored || generateDefaultIconGrid(character);
+    return iconGrids[character.id];
+  }
+ 
+  function drawIconGridToCanvas(canvasEl, grid, opts){
+    opts = opts || {};
+    const c = canvasEl.getContext('2d');
+    c.imageSmoothingEnabled = false;
+    const cell = canvasEl.width / GRID_COLS;
+    c.clearRect(0,0,canvasEl.width, canvasEl.height);
+    for(let r=0; r<GRID_ROWS; r++){
+      for(let col=0; col<GRID_COLS; col++){
+        const val = grid[r][col];
+        if(val){
+          c.fillStyle = val;
+          c.fillRect(col*cell, r*cell, cell, cell);
+        } else if(opts.checker){
+          c.fillStyle = ((r+col) % 2 === 0) ? '#20203a' : '#191928';
+          c.fillRect(col*cell, r*cell, cell, cell);
+        }
+      }
+    }
+    if(opts.showGrid){
+      c.strokeStyle = 'rgba(0,0,0,0.25)';
+      c.lineWidth = 1;
+      for(let i=0; i<=GRID_COLS; i++){
+        c.beginPath(); c.moveTo(i*cell,0); c.lineTo(i*cell, canvasEl.height); c.stroke();
+      }
+      for(let i=0; i<=GRID_ROWS; i++){
+        c.beginPath(); c.moveTo(0, i*cell); c.lineTo(canvasEl.width, i*cell); c.stroke();
+      }
+    }
+  }
+ 
+  let editorCharId = null;
+  let editorGrid = null;
+  let editorTool = 'pencil';
+  let editorColor = '#4ecdc4';
+  let painting = false;
+ 
+  function renderEditorPalette(){
+    const wrap = document.getElementById('editor-palette');
+    wrap.innerHTML = '';
+    EDITOR_PALETTE.forEach(col=>{
+      const sw = document.createElement('button');
+      sw.type = 'button';
+      sw.className = 'swatch' + (editorColor === col ? ' selected' : '');
+      sw.style.background = col;
+      sw.addEventListener('click', ()=>{
+        editorColor = col;
+        editorTool = 'pencil';
+        updateToolButtons();
+        renderEditorPalette();
+      });
+      wrap.appendChild(sw);
+    });
+  }
+  
+  function updateToolButtons(){
+    document.getElementById('tool-pencil').classList.toggle('selected', editorTool === 'pencil');
+    document.getElementById('tool-eraser').classList.toggle('selected', editorTool === 'eraser');
+  }
+ 
+  async function openIconEditor(){
+    const c = currentCharacter();
+    editorCharId = c.id;
+    const grid = await ensureIconLoaded(c);
+    editorGrid = grid.map(row => row.slice());
+    document.getElementById('editor-char-name').textContent = c.name;
+    drawIconGridToCanvas(document.getElementById('editor-canvas'), editorGrid, { checker: true, showGrid: true });
+    document.getElementById('select-overlay').classList.add('hidden');
+    document.getElementById('icon-editor-overlay').classList.remove('hidden');
+  }
+ 
+  function closeEditor(){
+    document.getElementById('icon-editor-overlay').classList.add('hidden');
+    document.getElementById('select-overlay').classList.remove('hidden');
+    renderCharacterSelect();
+  }
+ 
+  const editorCanvas = document.getElementById('editor-canvas');
+  
+  function paintAt(clientX, clientY){
+    const rect = editorCanvas.getBoundingClientRect();
+    const cellDisp = rect.width / GRID_COLS;
+    const col = Math.floor((clientX - rect.left) / cellDisp);
+    const row = Math.floor((clientY - rect.top) / cellDisp);
+    if(row < 0 || row >= GRID_ROWS || col < 0 || col >= GRID_COLS) return;
+    editorGrid[row][col] = editorTool === 'eraser' ? null : editorColor;
+    drawIconGridToCanvas(editorCanvas, editorGrid, { checker: true, showGrid: true });
+  }
+  
+  editorCanvas.addEventListener('mousedown', e => { painting = true; paintAt(e.clientX, e.clientY); });
+  window.addEventListener('mousemove', e => { if(painting) paintAt(e.clientX, e.clientY); });
+  window.addEventListener('mouseup', () => { painting = false; });
+  
+  editorCanvas.addEventListener('touchstart', e => {
+    painting = true;
+    const t = e.touches[0]; paintAt(t.clientX, t.clientY);
+    e.preventDefault();
+  }, { passive: false });
+  editorCanvas.addEventListener('touchmove', e => {
+    if(painting){ const t = e.touches[0]; paintAt(t.clientX, t.clientY); }
+    e.preventDefault();
+  }, { passive: false });
+  editorCanvas.addEventListener('touchend', () => { painting = false; });
+ 
+  // ---------- character select UI ----------
+  async function renderCharacterSelect(){
+    const c = currentCharacter();
+    document.getElementById('char-name').textContent = c.name;
+    document.getElementById('char-ability-name').textContent = c.abilityName;
+    document.getElementById('char-ability-desc').textContent = c.abilityDesc;
+    const grid = await ensureIconLoaded(c);
+    drawIconGridToCanvas(document.getElementById('char-icon'), grid, {});
+  }
+ 
+  // ---------- persistence ----------
+  async function loadHighScore(){
+    try{
+      const res = localStorage.getItem('metro-rush-highscore');
+      if(res) highScore = parseInt(res) || 0;
+    }catch(e){ highScore = 0; }
+    document.getElementById('hud-best').textContent = 'MIGLIOR ' + highScore;
+  }
+  
+  async function saveHighScore(){
+    try{ localStorage.setItem('metro-rush-highscore', String(highScore)); }catch(e){}
+  }
+  
+  async function saveSelectedCharacter(){
+    try{ localStorage.setItem('metro-rush-selected-character', currentCharacter().id); }catch(e){}
+  }
+  
+  async function loadCharacterData(){
+    try{
+      const res = localStorage.getItem('metro-rush-selected-character');
+      if(res){
+        const idx = CHARACTERS.findIndex(c => c.id === res);
+        if(idx >= 0) selectedIndex = idx;
+      }
+    }catch(e){}
+    renderCharacterSelect();
+  }
+
+  // ---------- game control ----------
+  function resetGame(){
+    score = 0; coinsCollected = 0; distance = 0; speed = BASE_SPEED; elapsed = 0;
+    player.lane = 1; player.x = laneX(1); player.status = 'run'; player.timer = 0;
+    player.jumpOffset = 0; player.vy = 0;
+    player.jumpsUsed = 0; player.invuln = 0;
+    obstacles = []; coins = []; particles = [];
+    spawnDistanceNext = 150;
+    hitFlash = 0;
+  }
+ 
+  async function startGame(){
+    resetGame();
+    const c = currentCharacter();
+    player.ability = c.ability;
+    player.maxJumps = 1;
+    // IL SALTATORE HA IMPULSO SPIETATO: 460px/s (Supera 55px di altezza!)
+    player.jumpImpulse = (c.ability === 'doubleJump') ? 460 : 310; 
+    player.shields = c.ability === 'shield' ? 1 : 0;
+    player.colors = c.baseColors;
+    player.grid = await ensureIconLoaded(c);
+
+    state = 'playing';
+    document.getElementById('select-overlay').classList.add('hidden');
+    document.getElementById('gameover-overlay').classList.add('hidden');
+  }
+  
+  function gameOver(){
+    state = 'hit';
+    hitFlash = 1;
+    setTimeout(()=>{
+      state = 'gameover';
+      if(score > highScore){ highScore = score; saveHighScore(); }
+      document.getElementById('final-score').textContent = score;
+      document.getElementById('final-best').textContent = highScore;
+      document.getElementById('gameover-overlay').classList.remove('hidden');
+    }, 450);
+  }
+ 
+  function laneChange(dir){
+    if(state !== 'playing') return;
+    const newLane = player.lane + dir;
+    if(newLane < 0 || newLane >= LANES) return;
+    player.lane = newLane;
+  }
+  
+  function jump(){
+    if(state !== 'playing' || player.status === 'slide') return;
+    if(player.jumpOffset === 0){
+      player.status = 'jump';
+      player.vy = player.jumpImpulse;
+    }
+  }
+  
+  function slide(){
+    if(state !== 'playing') return;
+    if(player.jumpOffset > 0){
+      player.vy = -500; // Scende in picchiata veloce se si preme Giù in volo
+    } else {
+      player.status = 'slide';
+      player.timer = 0.45;
+    }
+  }
+ 
+  // ---------- spawning ----------
+  function shuffle(arr){
+    for(let i = arr.length - 1; i > 0; i--){
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+  }
+  
+  function spawnCoinLine(lane, startY, count){
+    for(let i = 0; i < count; i++) coins.push({ lane, y: startY - i * 16, taken: false });
+  }
+  
+  function spawnObstacleRow(){
+    const numBlocked = Math.random() < 0.3 ? 2 : 1;
+    const lanes = [0,1,2];
+    shuffle(lanes);
+    const blocked = lanes.slice(0, numBlocked);
+    const types = ['low','high','block'];
+    blocked.forEach(lane=>{
+      const type = types[Math.floor(Math.random() * types.length)];
+      obstacles.push({ lane, y: -30, type, hit: false });
+    });
+    const free = lanes.slice(numBlocked);
+    if(free.length && Math.random() < 0.45) spawnCoinLine(free[0], -30, 4);
+  }
+  
+  function spawnCoinRow(){
+    const lane = Math.floor(Math.random() * LANES);
+    spawnCoinLine(lane, -30, 5);
+  }
+  
+  function spawnRow(){
+    if(Math.random() < 0.55) spawnObstacleRow();
+    else spawnCoinRow();
+  }
+  
+  function nextGap(){
+    const shrink = Math.min(40, elapsed * 0.6);
+    const min = 100 - shrink, max = 160 - shrink;
+    return min + Math.random() * (max - min);
+  }
+ 
+  // ---------- particelle ----------
+  function spawnSparkle(lane, y){
+    particles.push({ x: laneX(lane), y, life: 0.3, maxLife: 0.3 });
+  }
+  
+  function updateParticles(dt){
+    particles.forEach(p => p.life -= dt);
+    particles = particles.filter(p => p.life > 0);
+  }
+ 
+  // ---------- collisioni precise con fisica reale ----------
+  function checkCollisions(){
+    if(player.invuln <= 0){
+      const h = player.jumpOffset; // Altezza reale da terra in Pixel
+
+      for(const o of obstacles){
+        if(o.hit) continue;
+
+        // Impatto solo se si trova all'altezza dei piedi
+        if(o.lane === player.lane && Math.abs(o.y - PLAYER_Y) < 14){
+          let safe = false;
+
+          if(o.type === 'low'){
+            if(h > 12) safe = true; // Salto pulito sopra l'ostacolo basso
+          } 
+          else if(o.type === 'high'){
+            if(player.status === 'slide') safe = true; // Scivolata corretta sotto l'alto
+          } 
+          else if(o.type === 'block'){
+            if(h > 36) safe = true; // Soltanto il Saltatore (che supera 50px) sorvola il blocco!
+          }
+
+          if(!safe){
+            o.hit = true;
+            if(player.shields > 0){
+              player.shields--;
+              player.invuln = 1.0;
+              spawnSparkle(player.lane, PLAYER_Y);
+            } else {
+              gameOver();
+              return;
+            }
+          }
+        }
+      }
+    }
+
+    // Monete
+    const magnetOn = player.ability === 'magnet';
+    const allowedLane = magnetOn ? 1 : 0;
+    const yTol = magnetOn ? 20 : 12;
+    for(const c of coins){
+      if(c.taken) continue;
+      const laneDist = Math.abs(c.lane - player.lane);
+      if(laneDist <= allowedLane && Math.abs(c.y - (PLAYER_Y - player.jumpOffset)) < yTol){
+        c.taken = true;
+        coinsCollected++;
+        spawnSparkle(c.lane, c.y);
+      }
+    }
+  }
+  
+  // ---------- update ----------
+  function update(dt){
+    elapsed += dt;
+    speed = Math.min(MAX_SPEED, BASE_SPEED + elapsed * 4.2);
+    distance += speed * dt;
+    score = Math.floor(distance / 5) + coinsCollected * 10;
+
+    obstacles.forEach(o => o.y += speed * dt);
+    coins.forEach(c => c.y += speed * dt);
+    obstacles = obstacles.filter(o => o.y < H + 30);
+    coins = coins.filter(c => !c.taken && c.y < H + 30);
+
+    if(distance >= spawnDistanceNext){
+      spawnRow();
+      spawnDistanceNext = distance + nextGap();
+    }
+
+    const targetX = laneX(player.lane);
+    player.x += (targetX - player.x) * Math.min(1, dt * 14);
+
+    // Fisica Reale di Salto & Gravità
+    if(player.status === 'jump' || player.jumpOffset > 0){
+      player.jumpOffset += player.vy * dt;
+      player.vy -= GRAVITY * dt;
+
+      if(player.jumpOffset <= 0){
+        player.jumpOffset = 0;
+        player.vy = 0;
+        player.status = 'run';
+      }
+    } else if(player.status === 'slide'){
+      player.timer -= dt;
+      if(player.timer <= 0) player.status = 'run';
+    }
+
+    if(player.invuln > 0) player.invuln = Math.max(0, player.invuln - dt);
+
+    player.legTimer += dt;
+    if(player.legTimer > 0.11){ player.legTimer = 0; player.legFrame = 1 - player.legFrame; }
+
+    checkCollisions();
+  }
+ 
+  // ---------- drawing ----------
+  function drawBackground(){
+    const g = ctx.createLinearGradient(0,0,0,H);
+    g.addColorStop(0, '#1a1b2e');
+    g.addColorStop(1, '#3d2c5e');
+    ctx.fillStyle = g;
+    ctx.fillRect(0,0,W,H);
+  }
+ 
+  function drawBuildingAt(x,y,w,h){
+    ctx.fillStyle = '#22223b';
+    ctx.fillRect(x,y,w,h);
+    ctx.fillStyle = '#ffdd57';
+    for(let wy = y+4; wy < y+h-4; wy += 8){
+      for(let wx = x+3; wx < x+w-3; wx += 6){
+        if(((Math.floor(wx)+Math.floor(wy)) % 5) === 0) ctx.fillRect(wx,wy,2,2);
+      }
+    }
+  }
+ 
+  function drawScenery(){
+    buildingsLeft.forEach(b=>{
+      const y = ((distance * 0.4 + b.seed) % SCENERY_PERIOD);
+      drawBuildingAt(6, y - 60, b.w, b.h);
+      drawBuildingAt(6, y - 60 - SCENERY_PERIOD, b.w, b.h);
+    });
+    buildingsRight.forEach(b=>{
+      const y = ((distance * 0.4 + b.seed) % SCENERY_PERIOD);
+      drawBuildingAt(W - 6 - b.w, y - 60, b.w, b.h);
+      drawBuildingAt(W - 6 - b.w, y - 60 - SCENERY_PERIOD, b.w, b.h);
+    });
+  }
+ 
+  function drawTrack(){
+    ctx.fillStyle = '#2b2d42';
+    ctx.fillRect(TRACK_MARGIN, 0, TRACK_WIDTH, H);
+    ctx.strokeStyle = '#f4d35e';
+    ctx.lineWidth = 2;
+    const dashLen = 10, gapLen = 8;
+    const offset = distance % (dashLen + gapLen);
+    for(let l = 1; l < LANES; l++){
+      const x = TRACK_MARGIN + LANE_WIDTH * l;
+      ctx.beginPath();
+      for(let y = -offset; y < H; y += dashLen + gapLen){
+        ctx.moveTo(x, y); ctx.lineTo(x, y + dashLen);
+      }
+      ctx.stroke();
+    }
+    ctx.lineWidth = 1;
+    ctx.strokeRect(TRACK_MARGIN, 0, TRACK_WIDTH, H);
+  }
+ 
+  function drawObstacle(o){
+    const x = laneX(o.lane);
+    if(o.type === 'low'){
+      ctx.fillStyle = '#e63946';
+      ctx.fillRect(x-14, o.y-8, 28, 12);
+      ctx.fillStyle = '#ffb4a2';
+      ctx.fillRect(x-14, o.y-8, 28, 3);
+    } else if(o.type === 'high'){
+      ctx.fillStyle = '#c77b17';
+      ctx.fillRect(x-16, o.y-26, 4, 26);
+      ctx.fillRect(x+12, o.y-26, 4, 26);
+      ctx.fillStyle = '#ff9f1c';
+      ctx.fillRect(x-16, o.y-30, 32, 10);
+    } else { // 'block' viola
+      ctx.fillStyle = '#6a4c93';
+      ctx.fillRect(x-15, o.y-24, 30, 24); 
+      ctx.fillStyle = '#9d84c9';
+      ctx.fillRect(x-15, o.y-24, 30, 4);
+    }
+  }
+ 
+  function drawCoin(c){
+    const x = laneX(c.lane);
+    ctx.fillStyle = '#ffd700';
+    ctx.beginPath(); ctx.arc(x, c.y, 5, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#fff5b8';
+    ctx.beginPath(); ctx.arc(x-1.5, c.y-1.5, 1.5, 0, Math.PI*2); ctx.fill();
+  }
+ 
+  function drawCharacterSprite(tctx, x, y, status, legFrame, colors){
+    if(status === 'slide'){
+      tctx.fillStyle = colors.jacket;
+      tctx.fillRect(x-9, y-6, 18, 10);
+      tctx.fillStyle = colors.skin;
+      tctx.fillRect(x-5, y-10, 10, 6);
+      tctx.fillStyle = colors.hair;
+      tctx.fillRect(x-5, y-10, 10, 2);
+    } else {
+      tctx.fillStyle = colors.jacket;
+      tctx.fillRect(x-6, y-18, 12, 14);
+      tctx.fillStyle = colors.skin;
+      tctx.fillRect(x-5, y-26, 10, 9);
+      tctx.fillStyle = colors.hair;
+      tctx.fillRect(x-5, y-26, 10, 3);
+      tctx.fillStyle = '#22223b';
+      if(status === 'jump'){
+        tctx.fillRect(x-6, y-4, 5, 8);
+        tctx.fillRect(x+1, y-4, 5, 8);
+      } else if(legFrame === 0){
+        tctx.fillRect(x-6, y-4, 5, 10);
+        tctx.fillRect(x+1, y-4, 5, 6);
+      } else {
+        tctx.fillRect(x-6, y-4, 5, 6);
+        tctx.fillRect(x+1, y-4, 5, 10);
+      }
+      tctx.fillStyle = colors.jacket;
+      tctx.fillRect(x-9, y-16, 3, 8);
+      tctx.fillRect(x+6, y-16, 3, 8);
+    }
+  }
+ 
+  function drawPlayer(){
+    const x = player.x;
+    const y = PLAYER_Y - player.jumpOffset;
+
+    if(player.ability === 'magnet'){
+      ctx.strokeStyle = 'rgba(199,125,255,0.35)';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([3,3]);
+      ctx.beginPath();
+      ctx.arc(x, y-10, LANE_WIDTH*1.15, 0, Math.PI*2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+    const blinking = player.invuln > 0 && Math.floor(performance.now()/90) % 2 === 0;
+    if(blinking) ctx.globalAlpha = 0.4;
+    drawCharacterSprite(ctx, x, y, player.status, player.legFrame, player.colors || CHARACTERS[0].baseColors);
+    if(blinking) ctx.globalAlpha = 1;
+  }
+  
+  function drawParticles(){
+    particles.forEach(p=>{
+      const t = p.life / p.maxLife;
+      ctx.globalAlpha = t;
+      ctx.fillStyle = '#fff5b8';
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 6*(1-t)+2, 0, Math.PI*2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    });
+  }
+ 
+  function updateHUD(){
+    document.getElementById('hud-score').textContent = score;
+    document.getElementById('hud-best').textContent = 'MIGLIOR ' + highScore;
+    const abilityEl = document.getElementById('hud-ability');
+    if(state === 'playing' || state === 'hit'){
+      if(player.ability === 'shield') abilityEl.textContent = 'SCUDO x' + player.shields;
+      else if(player.ability === 'doubleJump') abilityEl.textContent = 'SUPER SALTO';
+      else if(player.ability === 'magnet') abilityEl.textContent = 'CALAMITA';
+      else abilityEl.textContent = '';
+    } else {
+      abilityEl.textContent = '';
+    }
+  }
+ 
+  function render(){
+    drawBackground();
+    drawScenery();
+    drawTrack();
+    coins.forEach(drawCoin);
+    obstacles.forEach(drawObstacle);
+    drawPlayer();
+    drawParticles();
+    if(state === 'hit' && hitFlash > 0){
+      ctx.fillStyle = `rgba(230,57,70,${hitFlash * 0.6})`;
+      ctx.fillRect(0,0,W,H);
+    }
+    updateHUD();
+  }
+ 
+  // ---------- loop ----------
+  function loop(ts){
+    if(!lastTime) lastTime = ts;
+    const dt = Math.min(0.05, (ts - lastTime) / 1000);
+    lastTime = ts;
+    if(state === 'playing') update(dt);
+    if(state === 'hit') hitFlash = Math.max(0, hitFlash - dt * 2.2);
+    updateParticles(dt);
+    render();
+    requestAnimationFrame(loop);
+  }
+ 
+  // ---------- input di gioco ----------
+  window.addEventListener('keydown', (e)=>{
+    const codes = ['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Space','KeyA','KeyD','KeyW','KeyS'];
+    if(codes.includes(e.code)) e.preventDefault();
+ 
+    if(state === 'menu'){
+      if(e.code === 'ArrowLeft'){ selectedIndex=(selectedIndex-1+CHARACTERS.length)%CHARACTERS.length; saveSelectedCharacter(); renderCharacterSelect(); return; }
+      if(e.code === 'ArrowRight'){ selectedIndex=(selectedIndex+1)%CHARACTERS.length; saveSelectedCharacter(); renderCharacterSelect(); return; }
+      if(e.code === 'Space' || e.code === 'Enter'){ startGame(); return; }
+      return;
+    }
+    if(state === 'gameover' && (e.code === 'Space' || e.code === 'Enter')){ startGame(); return; }
+ 
+    switch(e.code){
+      case 'ArrowLeft': case 'KeyA': laneChange(-1); break;
+      case 'ArrowRight': case 'KeyD': laneChange(1); break;
+      case 'ArrowUp': case 'KeyW': case 'Space': jump(); break;
+      case 'ArrowDown': case 'KeyS': slide(); break;
+    }
+  }, { passive: false });
+ 
+  let touchStartX = 0, touchStartY = 0;
+  
+  canvas.addEventListener('touchstart', (e)=>{
+    const t = e.changedTouches[0];
+    touchStartX = t.clientX; touchStartY = t.clientY;
+  }, { passive: true });
+  
+  canvas.addEventListener('touchend', (e)=>{
+    if(state !== 'playing') return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - touchStartX;
+    const dy = t.clientY - touchStartY;
+    if(Math.abs(dx) > Math.abs(dy)){
+      if(Math.abs(dx) > 24) laneChange(dx > 0 ? 1 : -1);
+    } else {
+      if(dy < -24) jump();
+      else if(dy > 24) slide();
+    }
+  }, { passive: true });
+ 
+  document.getElementById('start-btn').addEventListener('click', startGame);
+  document.getElementById('restart-btn').addEventListener('click', startGame);
+  document.getElementById('change-char-btn').addEventListener('click', ()=>{
+    state = 'menu';
+    document.getElementById('gameover-overlay').classList.add('hidden');
+    document.getElementById('select-overlay').classList.remove('hidden');
+    renderCharacterSelect();
+  });
+  document.getElementById('prev-char').addEventListener('click', ()=>{
+    selectedIndex = (selectedIndex-1+CHARACTERS.length)%CHARACTERS.length;
+    saveSelectedCharacter();
+    renderCharacterSelect();
+  });
+  document.getElementById('next-char').addEventListener('click', ()=>{
+    selectedIndex = (selectedIndex+1)%CHARACTERS.length;
+    saveSelectedCharacter();
+    renderCharacterSelect();
+  });
+ 
+  // ---------- editor icone ----------
+  document.getElementById('edit-icon-btn').addEventListener('click', openIconEditor);
+  document.getElementById('tool-pencil').addEventListener('click', ()=>{ editorTool='pencil'; updateToolButtons(); });
+  document.getElementById('tool-eraser').addEventListener('click', ()=>{ editorTool='eraser'; updateToolButtons(); });
+  document.getElementById('editor-custom-color').addEventListener('input', (e)=>{
+    editorColor = e.target.value;
+    editorTool = 'pencil';
+    updateToolButtons();
+    renderEditorPalette();
+  });
+  document.getElementById('editor-reset-btn').addEventListener('click', ()=>{
+    editorGrid = generateDefaultIconGrid(currentCharacter());
+    drawIconGridToCanvas(editorCanvas, editorGrid, { checker:true, showGrid:true });
+  });
+  document.getElementById('editor-clear-btn').addEventListener('click', ()=>{
+    editorGrid = Array.from({length: GRID_ROWS}, () => new Array(GRID_COLS).fill(null));
+    drawIconGridToCanvas(editorCanvas, editorGrid, { checker:true, showGrid:true });
+  });
+  document.getElementById('editor-save-btn').addEventListener('click', async ()=>{
+    iconGrids[editorCharId] = editorGrid.map(row => row.slice());
+    await saveIconGrid(editorCharId, iconGrids[editorCharId]);
+    closeEditor();
+  });
+  document.getElementById('editor-cancel-btn').addEventListener('click', closeEditor);
+ 
+  // ---------- init ----------
+  renderEditorPalette();
+  renderCharacterSelect();
+  loadHighScore();
+  loadCharacterData();
+  requestAnimationFrame(loop);
+})();
