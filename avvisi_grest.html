@@ -6,6 +6,36 @@
     <title>Grest Organizator - Avvisi</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link rel="stylesheet" href="style.css">
+    <style>
+        /* Layout Grid Affiancato (Come da bozza) */
+        .avvisi-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-top: 15px;
+        }
+
+        @media (max-width: 768px) {
+            .avvisi-grid {
+                grid-template-columns: 1fr; /* Responsivo su mobile */
+            }
+        }
+
+        .avviso-item {
+            background: rgba(255, 255, 255, 0.05);
+            border-left: 4px solid var(--accent, #4ecdc4);
+            padding: 10px 14px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+        }
+
+        .avviso-data {
+            font-size: 0.75em;
+            color: #888;
+            display: block;
+            margin-bottom: 4px;
+        }
+    </style>
 </head>
 <body>
     <div class="container">
@@ -22,28 +52,38 @@
             </div>
         </div>
 
-        <div id="avvisiSection" class="card menu-section">
-            <h3>Avvisi</h3></br>
-            
-            <div style="margin-bottom: 20px;">
-                <h4>Avvisi Odierni</h4>
-                <div id="avvisiOdierniContent" class="activity-card" style="min-height: 60px;">
+        <div class="avvisi-grid">
+        
+        <!-- COLONNA SINISTRA -->
+        <div class="avvisi-col-left">
+            <div class="card" style="margin-bottom: 20px;">
+                <h3>Avvisi Odierni</h3>
+                <div id="avvisiOdierniContent">
                     <p style="color: #999;">Nessun avviso per oggi.</p>
                 </div>
             </div>
 
-            <div style="margin-bottom: 20px; padding: 15px; background: rgba(0,0,0,0.05); border-radius: 8px;">
-                <label for="avvisoInput"><strong>Inserisci un nuovo avviso:</strong></label>
-                <input id="avvisoInput" placeholder="Scrivi il tuo avviso qui..." style="width: 100%; min-height: 60px; padding: 10px; margin: 10px 0; border-radius: 4px; border: 1px solid #ccc; font-family: inherit;">
-                <button id="refreshButton" type="button" style="background: var(--accent); color: white; padding: 8px 20px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">Invia Avviso</button>
+            <div class="card">
+                <h4>Nuovo Avviso</h4>
+                <div style="margin-bottom: 12px; font-size: 0.9em; color: #555;">
+                    Pubblichi come: <strong id="autoreDisplay" style="color: var(--accent, #4ecdc4);">Caricamento...</strong>
+                </div>
+                <textarea id="avvisoInput" placeholder="Scrivi il tuo avviso qui..." style="width: 100%; height: 75px; padding: 10px; margin-bottom: 10px; border-radius: 4px; border: 1px solid #ccc; font-family: inherit; resize: none;"></textarea>
+                <button id="refreshButton" type="button" style="background: var(--accent, #4ecdc4); color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; width: 100%;">Invia Avviso</button>
             </div>
         </div>
-            <div class="card">
-                <h4>Storico Avvisi (Ordine Cronologico)</h4>
-                <div id="avvisiStoricoContent" style="max-height: 400px; overflow-y: auto;">
+
+        <!-- COLONNA DESTRA -->
+        <div class="avvisi-col-right">
+            <div class="card" style="height: 100%;">
+                <h3>Storico Avvisi</h3>
+                <div id="avvisiStoricoContent" style="max-height: 500px; overflow-y: auto; margin-top: 10px;">
                     <p style="color: #999;">Nessun avviso nel registro.</p>
                 </div>
             </div>
+        </div>
+
+        </div> <!-- Fine .avvisi-grid -->
     </div>
 
     <script src="app.js"></script>

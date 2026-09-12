@@ -2173,3 +2173,26 @@ input[type="password"]::placeholder {
     margin: 0 !important;
     width: auto !important;
 }
+
+/* Container principale della griglia */
+.avvisi-grid {
+    display: flex;
+    flex-direction: row;
+    gap: 20px;
+    width: 100%;
+    align-items: flex-start;
+}
+
+/* Le due colonne occupano esattamente il 50% ciascuna */
+.avvisi-col-left,
+.avvisi-col-right {
+    flex: 1;
+    min-width: 0; /* Previene il meccansimo di overflow che manda a capo le colonne */
+}
+
+/* Responsivo: va sotto SOLO sui telefoni (sotto i 768px) */
+@media (max-width: 768px) {
+    .avvisi-grid {
+        flex-direction: column;
+    }
+}

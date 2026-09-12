@@ -2365,6 +2365,217 @@ function aggiornaMessaggioAvvisi() {
     }
 }
 
+// Recupera il nominativo dell'utente attualmente loggato/selezionato
+function getNominativoUtenteCorrente() {
+    // 1. Cerca l'ID dall'elemento di selezione dell'account
+    const accountSelect = document.getElementById('accountSelect');
+    const selectedId = accountSelect ? accountSelect.value : null;
+
+    let account = null;
+
+    if (selectedId && window.animatoriAccounts) {
+        account = window.animatoriAccounts.find(a => String(a.id || a.id_animatore) === String(selectedId));
+    }
+
+    // 2. Fallback: cerca da localStorage se presente
+    if (!account) {
+        try {
+            const savedAccount = localStorage.getItem('grest_selected_account');
+            if (savedAccount) account = JSON.parse(savedAccount);
+        } catch (e) {}
+    }
+
+    // 3. Se trovato, restituisce il nominativo formattato esattamente come nella tabella
+    if (account) {
+        return account.nominativo || `${account.nome || ''} ${account.cognome || ''}`.trim() || 'Anonimo';
+    }
+
+    return 'Anonimo';
+}
+
+// Aggiorna l'etichetta dell'autore nell'interfaccia degli avvisi
+function aggiornaBadgeAutore() {
+    const badge = document.getElementById('autoreCorrenteBadge');
+    if (badge) {
+        badge.textContent = getNominativoUtenteCorrente();
+    }
+}
+
+// Recupera il nominativo salvato nelle altre pagine
+function getAutoreAttivo() {
+    return localStorage.getItem('grest_active_user') || null;
+}
+// Recupera il nominativo dell'account attivo usando getSelectedAccount()
+function getNominativoAutoreAttivo() {
+    if (typeof getSelectedAccount !== 'function') return null;
+    
+    const account = getSelectedAccount();
+    if (!account) return null;
+
+    // Formatta il nominativo con la stessa priorità usata nella tabella
+    return account.nominativo || `${account.nome || ''} ${account.cognome || ''}`.trim() || null;
+}
+
+// Aggiorna la dicitura dell'autore nella card della pagina avvisi
+function caricaBadgeAutoreAvvisi() {
+    const autoreDisplay = document.getElementById('autoreDisplay');
+    if (!autoreDisplay) return;
+
+    const nominativo = getNominativoAutoreAttivo();
+
+    if (nominativo) {
+        autoreDisplay.textContent = nominativo;
+        autoreDisplay.style.color = 'var(--accent, #4ecdc4)';
+    } else {
+        autoreDisplay.innerHTML = `<span style="color: #e63946;">Nessun account selezionato! <a href="selezione_account.html" style="color: #e63946; text-decoration: underline;">Selezionalo qui</a></span>`;
+    }
+}
+
+// Invia l'avviso a Supabase impedendo l'invio ad utenti non identificati
+async function inviaNuovoAvviso() {
+    const inputTesto = document.getElementById('avvisoInput');
+    if (!inputTesto) return;
+
+    const autore = getNominativoAutoreAttivo();
+
+    // BLOCCO RIGIDO: se non c'è un account valido, rimanda alla selezione
+    if (!autore) {
+        alert("Devi prima selezionare il tuo account per poter inviare un avviso!");
+        window.location.href = 'selezione_account.html';
+        return;
+    }
+
+    const testo = inputTesto.value.trim();
+    if (!testo) {
+        alert("Scrivi un messaggio prima di inviare!");
+        return;
+    }
+
+    try {
+        const { error } = await sb.from('avvisi').insert([{ testo, autore }]);
+        if (error) throw error;
+
+        inputTesto.value = '';
+        await caricaAvvisi(); // Ricarica la lista aggiornata
+    } catch (err) {
+        console.error("Errore salvataggio avviso:", err);
+        alert("Errore durante l'invio dell'avviso.");
+    }
+}
+
+// Carica e mostra gli avvisi nel layout a due colonne
+async function caricaAvvisi() {
+    const odierniContainer = document.getElementById('avvisiOdierniContent');
+    const storicoContainer = document.getElementById('avvisiStoricoContent');
+
+    if (!odierniContainer && !storicoContainer) return;
+
+    try {
+        const { data, error } = await sb
+            .from('avvisi')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        if (!data || data.length === 0) {
+            if (odierniContainer) odierniContainer.innerHTML = '<p style="color: #999;">Nessun avviso per oggi.</p>';
+            if (storicoContainer) storicoContainer.innerHTML = '<p style="color: #999;">Nessun avviso nel registro.</p>';
+            return;
+        }
+
+        const oggiStr = new Date().toISOString().split('T')[0];
+        const avvisiOdierni = data.filter(a => a.created_at && a.created_at.startsWith(oggiStr));
+        
+        // Render Avvisi Odierni
+        if (odierniContainer) {
+            if (avvisiOdierni.length === 0) {
+                odierniContainer.innerHTML = '<p style="color: #999;">Nessun avviso per oggi.</p>';
+            } else {
+                odierniContainer.innerHTML = avvisiOdierni.map(a => `
+                    <div class="avviso-item">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <strong style="color: var(--accent, #4ecdc4); font-size: 0.9em;">${a.autore || 'Anonimo'}</strong>
+                            <span class="avviso-data">${new Date(a.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                        </div>
+                        <p style="margin: 0; color: #333;">${a.testo}</p>
+                    </div>
+                `).join('');
+            }
+        }
+
+        // Render Storico Completo
+        if (storicoContainer) {
+            storicoContainer.innerHTML = data.map(a => `
+                <div class="avviso-item">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                        <strong style="color: var(--accent, #4ecdc4); font-size: 0.9em;">${a.autore || 'Anonimo'}</strong>
+                        <span class="avviso-data">${new Date(a.created_at).toLocaleString()}</span>
+                    </div>
+                    <p style="margin: 0; color: #333;">${a.testo}</p>
+                </div>
+            `).join('');
+        }
+
+    } catch (err) {
+        console.error("Errore caricamento avvisi:", err);
+    }
+}
+
+// Carica gli avvisi nel pannello Admin
+async function caricaAvvisiAdmin() {
+    const listContainer = document.getElementById('adminAvvisiList');
+    if (!listContainer) return;
+
+    try {
+        const { data, error } = await sb
+            .from('avvisi')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        if (!data || data.length === 0) {
+            listContainer.innerHTML = '<p style="color: #999;">Nessun avviso presente nel database.</p>';
+            return;
+        }
+
+        listContainer.innerHTML = data.map(a => `
+            <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.05); padding: 10px 14px; margin-bottom: 8px; border-radius: 6px; border-left: 4px solid var(--accent, #4ecdc4);">
+                <div style="flex: 1; padding-right: 10px;">
+                    <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 4px;">
+                        <strong style="color: var(--accent, #4ecdc4); font-size: 0.9em;">${a.autore || 'Anonimo'}</strong>
+                        <small style="color: #888; font-size: 0.75em;">${new Date(a.created_at).toLocaleString()}</small>
+                    </div>
+                    <p style="margin: 0; font-size: 0.95em;">${a.testo}</p>
+                </div>
+                <button onclick="eliminaAvvisoAdmin(${a.id})" style="background: #e63946; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 0.85em; flex-shrink: 0;">
+                    Elimina
+                </button>
+            </div>
+        `).join('');
+
+    } catch (err) {
+        console.error("Errore caricamento avvisi admin:", err);
+        listContainer.innerHTML = '<p style="color: #e63946;">Errore durante il caricamento degli avvisi.</p>';
+    }
+}
+
+// Elimina l'avviso selezionato
+async function eliminaAvvisoAdmin(id) {
+    if (!confirm("Sei sicuro di voler eliminare definitivamente questo avviso?")) return;
+
+    try {
+        const { error } = await sb.from('avvisi').delete().eq('id', id);
+        if (error) throw error;
+
+        await caricaAvvisiAdmin(); // Ricarica la lista admin
+    } catch (err) {
+        console.error("Errore eliminazione avviso:", err);
+        alert("Impossibile eliminare l'avviso selezionato.");
+    }
+}
+
 function setCurrentYear() {
     document.querySelectorAll('.current-year').forEach(el => {
         el.textContent = new Date().getFullYear();
@@ -2490,7 +2701,26 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (document.getElementById('listaAnimatori') || document.getElementById('animatoriTable')) {
         mostraAnimatori();
     }
+    // 1. Collega il listener al pulsante di invio
+    const btnInvia = document.getElementById('refreshButton');
+    if (btnInvia) {
+        btnInvia.addEventListener('click', inviaNuovoAvviso);
+    }
+
+    // 2. Carica la lista degli account se non è ancora presente in memoria
+    if ((!window.animatoriAccounts || window.animatoriAccounts.length === 0) && typeof loadAnimatoriAccounts === 'function') {
+        await loadAnimatoriAccounts();
+    }
+
+    if (document.getElementById('adminAvvisiList')) {
+        await caricaAvvisiAdmin();
+    }
+
+    // 3. Ora che animatoriAccounts è pronto, aggiorna il badge autore e carica gli avvisi
+    caricaBadgeAutoreAvvisi();
+    await caricaAvvisi();
 });
+
 
 function aggiornaIntestazioneGiornoSelezionato() {
     const header = document.getElementById('selectedDayHeader');
@@ -3008,10 +3238,6 @@ async function initAssegnazioneSquadre(listaAnimatori) {
     renderAssegnazioneSquadre(listaAnimatori);
 }
 
-//======================================//
-
-
-
 
 function renderAssegnazioneSquadre(listaAnimatori) {
     const tbody = document.getElementById('assegnazioneSquadreBody');
@@ -3121,9 +3347,25 @@ async function salvaSquadraAnimatore(animatoreId) {
 }
 
 
-///////////////////////////////////////
-///                                 ///
-///          GREST-RUSH             ///
-///                                 ///
-///////////////////////////////////////
+//=====================================//
 
+// Quando l'utente cambia account nel menu a tendina principale
+const accountSelect = document.getElementById('accountSelect');
+if (accountSelect) {
+    accountSelect.addEventListener('change', (e) => {
+        const idSelezionato = e.target.value;
+        
+        // Trova l'animatore corrispondente
+        const animatore = (window.animatoriAccounts || []).find(a => String(a.id || a.id_animatore) === String(idSelezionato));
+        
+        if (animatore) {
+            const nominativo = animatore.nominativo || `${animatore.nome || ''} ${animatore.cognome || ''}`.trim();
+            // Salva nel browser
+            localStorage.setItem('grest_active_user', nominativo);
+        } else {
+            localStorage.removeItem('grest_active_user');
+        }
+
+        if (typeof updateDashboard === 'function') updateDashboard();
+    });
+}
