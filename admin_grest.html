@@ -14,7 +14,7 @@
     <div class="top-right-menu">
         <button id="menuToggle" type="button" aria-expanded="false">Menu</button>
         <div class="top-right-dropdown" id="menuDropdown" aria-hidden="true">
-            <a href="index_grest.html" class="dropdown-item">Pagina principale/Attività</a>
+            <a href="index.html" class="dropdown-item">Pagina principale/Attività</a>
             <a href="animatori_grest.html" class="dropdown-item">Animatori squadre</a>
             <a href="avvisi_grest.html" class="dropdown-item">Avvisi</a>
             <a href="grest-rush.html" class="dropdown-item">Grest Rush</a>
@@ -212,63 +212,48 @@
             <!-- Gestione Piscina e Squadre -->
         <div class="pool-team-layout">
         <div class="card" id="gestione-programma-section">
-            <h3> Gestione Turni Piscina</h3>
+            <h3>Gestione Turni Piscina</h3>
             <p>Seleziona le squadre che andranno in piscina nel giorno selezionato:</p>
-
+                
             <!-- Selezione Giorno della Settimana -->
-        <div style="margin-bottom: 15px;">
-            <label><strong style="color: var(--accent);">Seleziona Giorno:</strong></label>
-            <select id="piscinaGiorno" onchange="caricaTurniPiscinaPerGiorno(this.value)" style="padding: 5px; max-width: 25%; margin-left: 70px;">
-                <option value="martedi">Martedì</option>
-                <option value="giovedi">Giovedì</option>
-            </select>
-        </div>
+            <div style="margin-bottom: 15px;">
+                <label><strong style="color: var(--accent);">Seleziona Giorno:</strong></label>
+                <select id="piscinaGiorno" onchange="caricaTurniPiscinaPerGiorno(this.value)" style="padding: 5px; max-width: 25%; margin-left: 70px;">
+                    <option value="martedi">Martedì</option>
+                    <option value="giovedi">Giovedì</option>
+                </select>
+            </div>
+        
             <!-- Turno Mattina -->
-        <div style="margin-bottom: 15px; padding: 10px; background: rgba(0,0,0,0.1); border-radius: 8px;">
-            <strong style="color:var(--accent);">Mattina (2 squadre)</strong><br><br>
-            <label>Squadra 1:</label>
-            <select id="piscinaMattina1">
-                <option value="">Nessuna</option>
-                <option value="rossi">Rossi</option>
-                <option value="blu">Blu</option>
-                <option value="gialli">Gialli</option>
-                <option value="verdi">Verdi</option>
-            </select>
-        
-            <label >Squadra 2:</label>
-            <select id="piscinaMattina2">
-                <option value="">Nessuna</option>
-                <option value="rossi">Rossi</option>
-                <option value="blu">Blu</option>
-                <option value="gialli">Gialli</option>
-                <option value="verdi">Verdi</option>
-            </select>
-        </div>
-        
+            <div style="margin-bottom: 15px; padding: 10px; background: rgba(0,0,0,0.1); border-radius: 8px;">
+                <strong style="color:var(--accent);">Mattina (2 squadre)</strong><br><br>
+                <label>Squadra 1:</label>
+                <select id="piscinaMattina1" class="piscinaSquadreSelect">
+                    <option value="">Nessuna</option>
+                </select>
+            
+                <label>Squadra 2:</label>
+                <select id="piscinaMattina2" class="piscinaSquadreSelect">
+                    <option value="">Nessuna</option>
+                </select>
+            </div>
+            
             <!-- Turno Pomeriggio -->
-        <div style="padding: 10px; background: rgba(0,0,0,0.1); border-radius: 8px;">
-            <strong style="color:var(--accent);">Pomeriggio (2 squadre)</strong><br><br>
-            <label>Squadra 1:</label>
-            <select id="piscinaPomeriggio1">
-                <option value="">Nessuna</option>
-                <option value="rossi">Rossi</option>
-                <option value="blu">Blu</option>
-                <option value="gialli">Gialli</option>
-                <option value="verdi">Verdi</option>
-            </select>
-        
-            <label>Squadra 2:</label>
-            <select id="piscinaPomeriggio2">
-                <option value="">Nessuna</option>
-                <option value="rossi">Rossi</option>
-                <option value="blu">Blu</option>
-                <option value="gialli">Gialli</option>
-                <option value="verdi">Verdi</option>
-            </select>
-        </div>
-        </br>
+            <div style="padding: 10px; background: rgba(0,0,0,0.1); border-radius: 8px;">
+                <strong style="color:var(--accent);">Pomeriggio (2 squadre)</strong><br><br>
+                <label>Squadra 1:</label>
+                <select id="piscinaPomeriggio1" class="piscinaSquadreSelect">
+                    <option value="">Nessuna</option>
+                </select>
+            
+                <label>Squadra 2:</label>
+                <select id="piscinaPomeriggio2" class="piscinaSquadreSelect">
+                    <option value="">Nessuna</option>
+                </select>
+            </div>
+            <br>
             <button onclick="salvaTurniPiscina()">
-                 Salva Turni Piscina
+                Salva Turni Piscina
             </button>
         </div>
 
@@ -347,17 +332,17 @@
                 <h3>Gestione Avvisi</h3>
                 <span class="register-legend">Comunica con animatori e staff</span>
             </div>
-
+        
+            <!-- Form Inserimento Avviso Admin -->
             <div style="margin-bottom: 20px; padding: 15px; background: rgba(0,0,0,0.05); border-radius: 8px;">
                 <label for="adminAvvisoInput"><strong>Inserisci nuovo avviso:</strong></label>
-                <input id="adminAvvisoInput" placeholder="Scrivi il tuo avviso qui..." style="width: 100%; min-height: 80px; padding: 10px; margin: 10px 0; border-radius: 4px; border: 1px solid #ccc; font-family: inherit;">
-                <button onclick="salvaAvvisoAdmin()" type="button" style="background: var(--accent); color: white; padding: 8px 20px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">Pubblica Avviso</button>
+                <textarea id="adminAvvisoInput" placeholder="Scrivi il tuo avviso qui..." style="width: 100%; min-height: 80px; padding: 10px; margin: 10px 0;border-radius: 4px; border: 1px solid #ccc; font-family: inherit; resize: none; box-sizing: border-box;"></textarea>
+                <button onclick="salvaAvvisoAdmin()" type="button" style="background: var(--accent, #4ecdc4); color: white; padding: 8px 20px; border: none;border-radius: 4px; cursor: pointer; font-weight: bold;">Pubblica Avviso</button>
             </div>
-            <!-- Sezione Gestione/Eliminazione Avvisi -->
-            <div class="card" style="margin-top: 20px;">
-                <h3>Gestione Avvisi</h3>
-                <p style="color: #666; font-size: 0.85em; margin-bottom: 15px;">Elimina gli avvisi errati o inopportuni inviati dagli utenti.</p>
-                        
+        
+            <!-- Lista Avvisi da Gestire/Eliminare -->
+            <div style="margin-top: 15px;">
+                <p style="color: #666; font-size: 0.85em; margin-bottom: 12px;">Elenco avvisi pubblicati nel sistema:</p>
                 <div id="adminAvvisiList" style="max-height: 400px; overflow-y: auto;">
                     <p style="color: #999;">Caricamento avvisi...</p>
                 </div>

@@ -763,7 +763,10 @@ async function salvaModificaAnimatore() {
         .filter(chk => chk.checked)
         .map(chk => chk.value);
 
+    // Definizione del ruolo finale da salvare
     const ruoloBase = ruoloEl ? ruoloEl.value : 'animatore';
+    const ruoloFinale = ruoloBase; // Dichiara la variabile mancante
+
     const giornoSelezionato = daySelect ? daySelect.value : '';
     const giocoSelezionato = gameSelect ? gameSelect.value : '';
     const managesGame = gameRoleEl && gameRoleEl.checked;
@@ -783,10 +786,8 @@ async function salvaModificaAnimatore() {
     const oldBaseRole = getBaseRole(animatore.ruolo);
     const ruoloCambiato = ruoloBase !== oldBaseRole;
     const settimaneCambiato = JSON.stringify(settimaneSelezionate.sort()) !== JSON.stringify(normalizzaSettimane(animatore.settimana).sort());
-    const dbAssignmentStored = oldMetadata.tipo === 'gioco';
 
-    const shouldUpdateDB = ruoloCambiato
-        || settimaneCambiato;
+    const shouldUpdateDB = ruoloCambiato || settimaneCambiato;
 
     if (managesGame && hasGameSelection) {
         saveLocalGameAssignment(animatore, { day: giornoSelezionato, game: giocoSelezionato });
@@ -1230,7 +1231,7 @@ function confermaPasswordAccount(event) {
         } catch (e) { console.error(e); }
 
         // Reindirizza alla pagina principale con l'ID selezionato
-        window.location.href = `index_grest.html?selectedAccountId=${accountId}`;
+        window.location.href = `index.html?selectedAccountId=${accountId}`;
     } else {
         // Password errata
         if (errDiv) {
@@ -1504,7 +1505,6 @@ async function updateDashboard() {
         if (membersEl) membersEl.innerHTML = '';
         if (poolInfo) poolInfo.textContent = 'Seleziona un account e un giorno per controllare la piscina.';
         
-        // Reset della card Arbitraggio e Gioco se non c'è nessun account
         const refereeInfo = document.getElementById('refereeInfo');
         const dailyGameInfo = document.getElementById('dailyGameInfo');
         if (refereeInfo) refereeInfo.textContent = '-';
@@ -1521,18 +1521,51 @@ async function updateDashboard() {
     if (currentAccountLabel) currentAccountLabel.textContent = nomeCompleto;
     if (nameEl) nameEl.textContent = nomeCompleto;
     
-    // 1. Pulisce il Ruolo in alto a sinistra (rimuove la parentesi col gioco)
+    // 1. Pulisce il Ruolo
     const ruoloPulito = typeof getBaseRole === 'function' 
         ? getBaseRole(account.ruolo) 
-        : (account.ruolo || '-').split('(')[0].trim();
+        : String(account.ruolo || '-').split('(')[0].trim();
     if (roleEl) roleEl.textContent = `Ruolo: ${ruoloPulito}`;
 
-    if (teamEl) teamEl.textContent = `Squadra: ${account.squadra || '-'}`;
+    // 2. Estrazione dinamica dal DB delle squadre
+    let listaSquadre = typeof SQUADRE !== 'undefined' ? SQUADRE : (window.SQUADRE || []);
+    
+    // Se la lista globale è vuota, la recupera direttamente dal client Supabase
+    if ((!listaSquadre || listaSquadre.length === 0) && typeof sb !== 'undefined') {
+        const { data: dbSquadre } = await sb.from('squadre').select('*');
+        if (dbSquadre) {
+            listaSquadre = dbSquadre;
+            window.SQUADRE = dbSquadre;
+        }
+    }
 
-    const members = account.squadra ? animatoriAccounts.filter(m => m.squadra === account.squadra) : [];
+    // Risoluzione ID -> Nome Squadra
+    const squadraRaw = String(account.squadra || account.id_squadra || '').trim();
+    let squadraNome = squadraRaw;
+
+    const sqTrovata = listaSquadre.find(s => 
+        String(s.id_squadra) === squadraRaw || 
+        String(s.id) === squadraRaw || 
+        String(s.nome).toLowerCase() === squadraRaw.toLowerCase()
+    );
+
+    if (sqTrovata && sqTrovata.nome) {
+        squadraNome = sqTrovata.nome;
+    }
+
+    if (teamEl) teamEl.textContent = `Squadra: ${squadraNome || '-'}`;
+
+    // 3. Membri della squadra
+    const members = squadraRaw ? animatoriAccounts.filter(m => {
+        const mSquadra = String(m.squadra || m.id_squadra || '').trim();
+        return mSquadra === squadraRaw || 
+               mSquadra.toLowerCase() === squadraNome.toLowerCase() || 
+               (m.squadraNome && m.squadraNome.toLowerCase() === squadraNome.toLowerCase());
+    }) : [];
+
     if (teamInfo) {
         teamInfo.textContent = members.length
-            ? `La tua squadra è ${account.squadra || '-'} con ${members.length} componente${members.length === 1 ? '' : 'i'}.`
+            ? `La tua squadra è ${squadraNome} con ${members.length} componente${members.length === 1 ? '' : 'i'}.`
             : 'Nessuna squadra assegnata.';
     }
     if (membersEl) {
@@ -1541,15 +1574,20 @@ async function updateDashboard() {
             : '<li>Nessun componente trovato.</li>';
     }
 
+    // 4. Controllo Piscina tollerante alle variazioni di formato (es: "blu", "Blu", "2")
     if (poolInfo) {
-        const squadra = (account.squadra || '').trim();
-        const squadraValida = squadra && squadra !== '-' && squadra.toLowerCase() !== 'nessuna';
-        const turnoPiscina = squadraValida ? getTurnoPiscinaSquadra(squadra, date) : null;
+        const squadraValida = squadraNome && squadraNome !== '-' && squadraNome.toLowerCase() !== 'nessuna';
+        
+        // Cerca il turno provando sia con il Nome (es: "Rossa") che con l'ID o forma minuscola (es: "rossi")
+        let turnoPiscina = squadraValida ? getTurnoPiscinaSquadra(squadraNome, date) : null;
+        if (!turnoPiscina && squadraValida) {
+            turnoPiscina = getTurnoPiscinaSquadra(squadraRaw, date) || getTurnoPiscinaSquadra(squadraNome.toLowerCase(), date);
+        }
 
         poolInfo.textContent = !squadraValida
             ? 'Devi far parte di una squadra per sapere il risultato della piscina.'
             : turnoPiscina
-                ? `Risultato piscina: la squadra ${squadra} è in piscina il ${turnoPiscina.toLowerCase()}.`
+                ? `Risultato piscina: la squadra ${squadraNome} è in piscina di ${turnoPiscina.toLowerCase()}.`
                 : 'Risultato piscina: oggi non si è in piscina.';
     }
 
@@ -1560,7 +1598,6 @@ async function updateDashboard() {
 
     updateMoodDisplay(account, behaviorSummary.mood);
 
-    // 2. Aggiorna in un colpo solo la card "Arbitraggio e gioco" usando direttamente 'account'
     if (typeof aggiornaInfoArbitraggioEGioco === 'function') {
         await aggiornaInfoArbitraggioEGioco(account, date);
     }
@@ -1855,6 +1892,34 @@ function getDailyGameForDate(date) {
 function isPoolDay(date) {
     return [2, 4].includes(date.getDay()); // Martedì e Giovedì
 }
+
+async function popolaSelectSquadrePiscina() {
+    let listaSquadre = typeof SQUADRE !== 'undefined' ? SQUADRE : (window.SQUADRE || []);
+
+    if ((!listaSquadre || listaSquadre.length === 0) && typeof sb !== 'undefined') {
+        const { data } = await sb.from('squadre').select('*');
+        if (data) {
+            listaSquadre = data;
+            window.SQUADRE = data;
+        }
+    }
+
+    const dropdowns = document.querySelectorAll('.piscinaSquadreSelect');
+    dropdowns.forEach(select => {
+        // Mantiene l'opzione "Nessuna"
+        select.innerHTML = '<option value="">Nessuna</option>'; 
+        
+        listaSquadre.forEach(sq => {
+            const opt = document.createElement('option');
+            opt.value = sq.nome; // Salva il nome esatto (es. "Rossa", "Blu")
+            opt.textContent = sq.nome;
+            select.appendChild(opt);
+        });
+    });
+}
+
+// Chiamala all'avvio dell'applicazione
+document.addEventListener("DOMContentLoaded", popolaSelectSquadrePiscina);
 
 function getRefereeStatus(account, date) {
     if (!account || !date) return 'Non arbitri oggi.';
@@ -2498,7 +2563,7 @@ async function caricaAvvisi() {
                             <strong style="color: var(--accent, #4ecdc4); font-size: 0.9em;">${a.autore || 'Anonimo'}</strong>
                             <span class="avviso-data">${new Date(a.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
                         </div>
-                        <p style="margin: 0; color: #333;">${a.testo}</p>
+                        <p style="margin: 0; color: #c9c9c9;">${a.testo}</p>
                     </div>
                 `).join('');
             }
@@ -2512,7 +2577,7 @@ async function caricaAvvisi() {
                         <strong style="color: var(--accent, #4ecdc4); font-size: 0.9em;">${a.autore || 'Anonimo'}</strong>
                         <span class="avviso-data">${new Date(a.created_at).toLocaleString()}</span>
                     </div>
-                    <p style="margin: 0; color: #333;">${a.testo}</p>
+                    <p style="margin: 0; color: #c9c9c9;">${a.testo}</p>
                 </div>
             `).join('');
         }
@@ -2522,7 +2587,34 @@ async function caricaAvvisi() {
     }
 }
 
-// Carica gli avvisi nel pannello Admin
+async function salvaAvvisoAdmin() {
+    const input = document.getElementById('adminAvvisoInput');
+    if (!input) return;
+
+    const testo = input.value.trim();
+    if (!testo) {
+        alert("Inserisci un testo per l'avviso prima di pubblicare.");
+        return;
+    }
+
+    try {
+        const { error } = await sb.from('avvisi').insert([
+            {
+                autore: 'Admin',
+                testo: testo
+            }
+        ]);
+
+        if (error) throw error;
+
+        input.value = ''; // Pulisce il campo di testo
+        await caricaAvvisiAdmin(); // Ricarica la lista avvisi
+    } catch (err) {
+        console.error("Errore salvataggio avviso:", err);
+        alert("Impossibile salvare l'avviso.");
+    }
+}
+
 async function caricaAvvisiAdmin() {
     const listContainer = document.getElementById('adminAvvisiList');
     if (!listContainer) return;
@@ -2541,16 +2633,16 @@ async function caricaAvvisiAdmin() {
         }
 
         listContainer.innerHTML = data.map(a => `
-            <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.05); padding: 10px 14px; margin-bottom: 8px; border-radius: 6px; border-left: 4px solid var(--accent, #4ecdc4);">
-                <div style="flex: 1; padding-right: 10px;">
-                    <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 4px;">
-                        <strong style="color: var(--accent, #4ecdc4); font-size: 0.9em;">${a.autore || 'Anonimo'}</strong>
-                        <small style="color: #888; font-size: 0.75em;">${new Date(a.created_at).toLocaleString()}</small>
+            <div style="position: relative; background: rgba(255,255,255,0.05); padding: 12px 14px; margin-bottom: 10px; border-radius: 6px; border-left: 4px solid var(--accent, #ff7b00);">
+                <div style="padding-right: 70px;">
+                    <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 6px;">
+                        <strong style="color: var(--accent, #ff7b00); font-size: 0.95em;">${a.autore || 'Anonimo'}</strong>
+                        <small style="color: #888; font-size: 0.8em;">${new Date(a.created_at).toLocaleString('it-IT', { dateStyle: 'short', timeStyle: 'short' })}</small>
                     </div>
-                    <p style="margin: 0; font-size: 0.95em;">${a.testo}</p>
+                    <p style="margin: 0; font-size: 0.95em; color: #fff; word-break: break-word; line-height: 1.4;">${a.testo}</p>
                 </div>
-                <button onclick="eliminaAvvisoAdmin(${a.id})" style="background: #e63946; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 0.85em; flex-shrink: 0;">
-                    Elimina
+                <button onclick="eliminaAvvisoAdmin(${a.id})" title="Elimina avviso" style="position: absolute; top: 12px; right: 12px; width: auto !important; min-width: unset !important; background: #e63946; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 0.75em; font-weight: bold;">
+                    ✕ Elimina
                 </button>
             </div>
         `).join('');
@@ -2569,7 +2661,7 @@ async function eliminaAvvisoAdmin(id) {
         const { error } = await sb.from('avvisi').delete().eq('id', id);
         if (error) throw error;
 
-        await caricaAvvisiAdmin(); // Ricarica la lista admin
+        await caricaAvvisiAdmin();
     } catch (err) {
         console.error("Errore eliminazione avviso:", err);
         alert("Impossibile eliminare l'avviso selezionato.");
@@ -3145,7 +3237,6 @@ function generaTestoAttivita() {
 }  
 
 // Salva i turni associandoli al giorno selezionato (es. 'martedi')
-
 function salvaTurniPiscina() {
     const giorno = document.getElementById('piscinaGiorno').value;
     if (!giorno) return;
@@ -3161,26 +3252,31 @@ function salvaTurniPiscina() {
         ]
     };
 
-    localStorage.setItem('piscina_giorno_' + giorno.toLowerCase(), JSON.stringify(turni));
+    localStorage.setItem('piscina_giorno_' + giorno.toLowerCase().trim(), JSON.stringify(turni));
     alert(`Turni piscina per ${giorno.toUpperCase()} salvati con successo!`);
+    
+    // Aggiorna la dashboard se aperta
+    if (typeof updateDashboard === 'function') {
+        updateDashboard();
+    }
 }
 
 // Carica i menu a tendina quando l'admin cambia il giorno selezionato
-
 function caricaTurniPiscinaPerGiorno(giorno) {
     if (!giorno) return;
-    const datiSalvati = localStorage.getItem('piscina_giorno_' + giorno.toLowerCase());
+    const datiSalvati = localStorage.getItem('piscina_giorno_' + giorno.toLowerCase().trim());
+    
     if (datiSalvati) {
         const turni = JSON.parse(datiSalvati);
-        document.getElementById('piscinaMattina1').value = turni.mattina[0] || "";
-        document.getElementById('piscinaMattina2').value = turni.mattina[1] || "";
-        document.getElementById('piscinaPomeriggio1').value = turni.pomeriggio[0] || "";
-        document.getElementById('piscinaPomeriggio2').value = turni.pomeriggio[1] || "";
+        if (document.getElementById('piscinaMattina1')) document.getElementById('piscinaMattina1').value = turni.mattina[0] || "";
+        if (document.getElementById('piscinaMattina2')) document.getElementById('piscinaMattina2').value = turni.mattina[1] || "";
+        if (document.getElementById('piscinaPomeriggio1')) document.getElementById('piscinaPomeriggio1').value = turni.pomeriggio[0] || "";
+        if (document.getElementById('piscinaPomeriggio2')) document.getElementById('piscinaPomeriggio2').value = turni.pomeriggio[1] || "";
     } else {
-        document.getElementById('piscinaMattina1').value = "";
-        document.getElementById('piscinaMattina2').value = "";
-        document.getElementById('piscinaPomeriggio1').value = "";
-        document.getElementById('piscinaPomeriggio2').value = "";
+        if (document.getElementById('piscinaMattina1')) document.getElementById('piscinaMattina1').value = "";
+        if (document.getElementById('piscinaMattina2')) document.getElementById('piscinaMattina2').value = "";
+        if (document.getElementById('piscinaPomeriggio1')) document.getElementById('piscinaPomeriggio1').value = "";
+        if (document.getElementById('piscinaPomeriggio2')) document.getElementById('piscinaPomeriggio2').value = "";
     }
 }
 
@@ -3188,25 +3284,48 @@ function caricaTurniPiscinaPerGiorno(giorno) {
 function getTurnoPiscinaSquadra(nomeSquadra, date) {
     if (!nomeSquadra || !date) return null;
 
+    // 1. Mappatura sicura del giorno senza accenti per combaciare con la chiave di localStorage
+    const giorniMappa = ['domenica', 'lunedi', 'martedi', 'mercoledi', 'giovedi', 'venerdi', 'sabato'];
     const dateObj = (date instanceof Date) ? date : new Date(date);
-    const giornoSettimana = dateObj.toLocaleDateString('it-IT', { weekday: 'long' })
-        .normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    const giornoSettimana = giorniMappa[dateObj.getDay()];
 
     const datiSalvati = localStorage.getItem('piscina_giorno_' + giornoSettimana);
     if (!datiSalvati) return null;
 
     const turni = JSON.parse(datiSalvati);
-    const sqClean = nomeSquadra.trim().toLowerCase();
-    const appartieneAllaSquadra = valore => String(valore || '').trim().toLowerCase() === sqClean;
+    
+    // 2. Risoluzione dei dettagli della squadra (cerca sia per ID che per Nome)
+    const target = String(nomeSquadra || '').trim().toLowerCase();
+    
+    // Cerca l'oggetto squadra completo se SQUADRE è disponibile nel DB/window
+    const listaSquadre = typeof SQUADRE !== 'undefined' ? SQUADRE : (window.SQUADRE || []);
+    const sqObj = listaSquadre.find(s => 
+        String(s.id_squadra) === target || 
+        String(s.id) === target || 
+        String(s.nome).toLowerCase() === target
+    );
 
-    const inMattina = turni.mattina.some(appartieneAllaSquadra);
-    const inPomeriggio = turni.pomeriggio.some(appartieneAllaSquadra);
+    // Raccoglie tutti i valori possibili per questa squadra (es. "2", "blu", "Blu")
+    const valoriValidi = new Set([target]);
+    if (sqObj) {
+        if (sqObj.id_squadra) valoriValidi.add(String(sqObj.id_squadra).toLowerCase());
+        if (sqObj.id) valoriValidi.add(String(sqObj.id).toLowerCase());
+        if (sqObj.nome) valoriValidi.add(String(sqObj.nome).toLowerCase());
+    }
+
+    const appartieneAllaSquadra = valore => {
+        if (!valore) return false;
+        const valClean = String(valore).trim().toLowerCase();
+        return valoriValidi.has(valClean);
+    };
+
+    const inMattina = Array.isArray(turni.mattina) && turni.mattina.some(appartieneAllaSquadra);
+    const inPomeriggio = Array.isArray(turni.pomeriggio) && turni.pomeriggio.some(appartieneAllaSquadra);
 
     if (inMattina) return 'Mattina';
     if (inPomeriggio) return 'Pomeriggio';
     return null;
 }
-
 
 //======================================//
 

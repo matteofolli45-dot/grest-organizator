@@ -133,7 +133,7 @@ body {
         <div class="top-right-menu">
             <button id="menuToggle" type="button" aria-expanded="false">Menu</button>
             <div class="top-right-dropdown" id="menuDropdown" aria-hidden="true">
-                <a href="index_grest.html" class="dropdown-item">Pagina principale/Attività</a>
+                <a href="index.html" class="dropdown-item">Pagina principale/Attività</a>
                 <a href="animatori_grest.html" class="dropdown-item">Animatori squadre</a>
                 <a href="avvisi_grest.html" class="dropdown-item">Avvisi</a>
                 <a href="admin_grest.html" class="dropdown-item">Admin</a>
@@ -288,18 +288,36 @@ body {
   const EDITOR_PALETTE = ['#ffffff','#f4f1de','#ffd700','#ff9f1c','#e63946','#ff6b6b','#c77dff',
     '#4ecdc4','#06d6a0','#118ab2','#3d2c5e','#22223b','#2b2d42','#8d5524','#ffcc99','#000000'];
  
+  // Incolla qui il testo copiato dalla console tra gli apici ' '
+const SAVED_GIOVANNI_JSON = '[[null,null,null,null,null,null,null,"#e63946","#e63946","#f4f1de","#f4f1de","#f4f1de","#f4f1de","#f4f1de","#e63946","#e63946","#e63946","#e63946","#e63946",null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,"#e63946","#f4f1de","#f4f1de","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#f4f1de","#f4f1de","#e63946","#e63946","#e63946","#e63946",null,null,null,null,null,null,null,null],[null,null,null,null,null,"#e63946","#f4f1de","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#f4f1de","#f4f1de","#e63946","#e63946","#e63946","#e63946",null,null,null,null,null,null],[null,null,null,null,"#e63946","#e63946","#f4f1de","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#f4f1de","#e63946","#e63946","#e63946","#e63946","#e63946",null,null,null,null,null],[null,null,null,"#e63946","#e63946","#f4f1de","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#f4f1de","#e63946","#e63946","#e63946","#e63946","#e63946",null,null,null,null],[null,null,"#e63946","#e63946","#f4f1de","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#f4f1de","#e63946","#e63946","#e63946","#e63946","#e63946",null,null,null,null],[null,null,"#e63946","#f4f1de","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#f4f1de","#e63946","#e63946","#e63946","#e63946",null,null,null,null],[null,"#e63946","#e63946","#f4f1de","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#f4f1de","#f4f1de","#e63946","#e63946","#e63946","#e63946",null,null,null],[null,"#e63946","#f4f1de","#ffd700","#ffd700","#ffd700","#ffd700","#8d5524","#8d5524","#ffcc99","#8d5524","#8d5524","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#f4f1de","#e63946","#e63946","#e63946","#e63946",null,null,null],[null,"#e63946","#f4f1de","#ffd700","#ffd700","#8d5524","#8d5524","#8d5524","#8d5524","#ffcc99","#8d5524","#8d5524","#8d5524","#8d5524","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#f4f1de","#e63946","#e63946","#e63946","#e63946",null,null,null],[null,"#e63946","#f4f1de","#ffd700","#ffd700","#8d5524","#ffcc99","#ffcc99","#8d5524","#8d5524","#ffcc99","#ffcc99","#ffcc99","#8d5524","#8d5524","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#f4f1de","#e63946","#e63946","#e63946","#e63946",null,null,null],[null,"#e63946","#f4f1de","#ffd700","#8d5524","#8d5524","#ffcc99","#ffcc99","#ffcc99","#8d5524","#ffcc99","#ffcc99","#8d5524","#8d5524","#8d5524","#8d5524","#ffd700","#ffd700","#ffd700","#ffd700","#f4f1de","#e63946","#e63946","#e63946",null,null,null,null],[null,"#e63946","#8d5524","#000000","#000000","#000000","#000000","#000000","#000000","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#8d5524","#ffcc99","#ffcc99","#ffcc99",null,null,null],[null,null,"#ffcc99","#000000","#f4f1de","#f4f1de","#508e8d","#508e8d","#000000","#000000","#ffcc99","#ffcc99","#ffcc99","#000000","#f4f1de","#f4f1de","#508e8d","#508e8d","#508e8d","#f4f1de","#000000","#ffcc99","#8d5524","#8d5524","#ffcc99",null,null,null],[null,null,"#ffcc99","#000000","#f4f1de","#f4f1de","#508e8d","#f4f1de","#2b2d42","#000000","#ffcc99","#ffcc99","#ffcc99","#000000","#f4f1de","#f4f1de","#508e8d","#f4f1de","#2b2d42","#f4f1de","#000000","#ffcc99","#8d5524","#ffcc99","#ffcc99","#ffcc99",null,null],[null,null,"#ffcc99","#000000","#000000","#f4f1de","#508e8d","#2b2d42","#2b2d42","#000000","#8d5524","#ffcc99","#ffcc99","#000000","#000000","#f4f1de","#508e8d","#2b2d42","#2b2d42","#f4f1de","#000000","#ffcc99","#8d5524","#8d5524","#ffcc99","#ffcc99",null,null],[null,null,null,"#ffcc99","#000000","#000000","#000000","#000000","#000000","#000000","#8d5524","#ffcc99","#ffcc99","#ffcc99","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#ffcc99","#8d5524","#8d5524","#ffcc99",null,null,null],[null,null,null,"#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#8d5524","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99",null,null,null],[null,null,null,"#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#8d5524","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99",null,null,null,null],[null,null,null,null,"#ffcc99","#ffcc99","#ffcc99","#ffcc99","#8d5524","#ffcc99","#ffcc99","#ffcc99","#8d5524","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99",null,null,null,null],[null,null,null,null,"#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#8d5524","#8d5524","#8d5524","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99",null,null,null,null,null,null],[null,null,null,null,"#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#f4f1de","#f4f1de","#000000","#ffcc99","#ffcc99","#ffcc99",null,null,null,null,null,null],[null,null,null,null,null,"#ffcc99","#ffcc99","#ffcc99","#000000","#f4f1de","#f4f1de","#f4f1de","#f4f1de","#f4f1de","#f4f1de","#f4f1de","#f4f1de","#000000","#ffcc99","#ffcc99","#ffcc99",null,null,null,null,null,null,null],[null,null,null,null,null,"#ffcc99","#ffcc99","#ffcc99","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#ffcc99","#ffcc99","#ffcc99",null,null,null,null,null,null,null,null],[null,null,null,null,null,null,"#ffcc99","#ffcc99","#ffcc99","#f4f1de","#f4f1de","#000000","#000000","#000000","#000000","#f4f1de","#f4f1de","#ffcc99","#ffcc99","#ffcc99",null,null,null,null,null,null,null,null],[null,null,null,null,null,null,"#ffcc99","#ffcc99","#ffcc99","#ffcc99","#f4f1de","#f4f1de","#f4f1de","#f4f1de","#f4f1de","#f4f1de","#ffcc99","#ffcc99","#ffcc99","#c77dff",null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,"#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#c77dff","#c77dff",null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,"#c77dff","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#c77dff","#c77dff","#c77dff","#c77dff",null,null,null,null,null,null,null],[null,null,null,null,null,null,"#c77dff","#c77dff","#c77dff","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff",null,null,null,null,null,null],[null,"#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff",null,null],["#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff",null],["#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff"],["#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff"],["#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff"],["#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff"],["#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff"]]';
+
+const SAVED_MELA_JSON = '[[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,"#8d5524","#8d5524","#8d5524","#8d5524","#8d5524","#8d5524",null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,"#8d5524","#8d5524","#8d5524","#8d5524","#8d5524","#8d5524","#ffd700","#ff9f1c","#ff9f1c","#8d5524","#8d5524","#8d5524",null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,"#8d5524","#8d5524","#ffd700","#ffd700","#ff9f1c","#8d5524","#ffd700","#ff9f1c","#ffd700","#ff9f1c","#8d5524","#ff9f1c","#8d5524","#8d5524","#8d5524",null,null,null,null,null,null,null],[null,null,null,null,null,"#8d5524","#8d5524","#ffd700","#8d5524","#8d5524","#ffd700","#8d5524","#ffd700","#ff9f1c","#ffd700","#ffd700","#8d5524","#ffd700","#ff9f1c","#8d5524","#8d5524","#8d5524",null,null,null,null,null,null],[null,null,null,null,"#8d5524","#8d5524","#ffd700","#8d5524","#8d5524","#8d5524","#ff9f1c","#8d5524","#ffd700","#8d5524","#8d5524","#ffd700","#ff9f1c","#ffd700","#ffd700","#ffd700","#ff9f1c","#ff9f1c","#8d5524",null,null,null,null,null],[null,null,null,null,"#8d5524","#8d5524","#ffd700","#8d5524","#ffd700","#8d5524","#ff9f1c","#8d5524","#ffd700","#8d5524","#ffd700","#ffd700","#ffd700","#8d5524","#ff9f1c","#ffd700","#ffd700","#ff9f1c","#8d5524","#8d5524",null,null,null,null],[null,null,null,"#8d5524","#8d5524","#ffd700","#8d5524","#8d5524","#ff9f1c","#ff9f1c","#8d5524","#8d5524","#8d5524","#8d5524","#8d5524","#ffd700","#ff9f1c","#8d5524","#8d5524","#ff9f1c","#ffd700","#ffd700","#ff9f1c","#8d5524",null,null,null,null],[null,null,null,"#8d5524","#ff9f1c","#ffd700","#8d5524","#8d5524","#ff9f1c","#ff9f1c","#8d5524","#ffd700","#8d5524","#ff9f1c","#8d5524","#8d5524","#ff9f1c","#8d5524","#ffd700","#ff9f1c","#8d5524","#ffd700","#ff9f1c","#8d5524",null,null,null,null],[null,null,"#8d5524","#8d5524","#8d5524","#8d5524","#8d5524","#8d5524","#ff9f1c","#8d5524","#8d5524","#ffd700","#8d5524","#ff9f1c","#ff9f1c","#ff9f1c","#ff9f1c","#8d5524","#ffd700","#ff9f1c","#8d5524","#8d5524","#ffd700","#8d5524",null,null,null,null],[null,null,"#8d5524","#8d5524","#ffcc99","#8d5524","#8d5524","#8d5524","#8d5524","#8d5524","#8d5524","#ffcc99","#8d5524","#8d5524","#8d5524","#8d5524","#8d5524","#ffcc99","#8d5524","#8d5524","#8d5524","#8d5524","#8d5524","#8d5524",null,null,null,null],[null,null,"#8d5524","#8d5524","#ffcc99","#22223b","#22223b","#22223b","#22223b","#22223b","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#22223b","#22223b","#22223b","#22223b","#ffcc99","#ffcc99","#8d5524","#8d5524",null,null,null,null,null],[null,null,null,"#ffcc99","#22223b","#22223b","#f4f1de","#8d5524","#8d5524","#22223b","#22223b","#ffcc99","#ffcc99","#ffcc99","#22223b","#f4f1de","#8d5524","#8d5524","#8d5524","#22223b","#ffcc99","#ffcc99","#8d5524","#8d5524","#8d5524",null,null,null],[null,null,null,"#ffcc99","#22223b","#f4f1de","#8d5524","#f4f1de","#000000","#000000","#8d5524","#22223b","#ffcc99","#22223b","#f4f1de","#8d5524","#f4f1de","#000000","#000000","#8d5524","#22223b","#8d5524","#ffcc99","#ffcc99","#ffcc99","#8d5524",null,null],[null,null,null,"#ffcc99","#22223b","#f4f1de","#8d5524","#000000","#000000","#000000","#8d5524","#22223b","#8d5524","#22223b","#f4f1de","#8d5524","#000000","#000000","#000000","#8d5524","#22223b","#ffcc99","#8d5524","#8d5524","#ffcc99","#8d5524",null,null],[null,null,null,"#ffcc99","#22223b","#f4f1de","#8d5524","#000000","#000000","#000000","#8d5524","#22223b","#8d5524","#22223b","#f4f1de","#8d5524","#000000","#000000","#000000","#8d5524","#22223b","#8d5524","#8d5524","#ffcc99","#ffcc99","#ffcc99","#8d5524",null],[null,null,null,"#ffcc99","#22223b","#f4f1de","#f4f1de","#8d5524","#8d5524","#8d5524","#22223b","#8d5524","#ffcc99","#ffcc99","#22223b","#f4f1de","#8d5524","#8d5524","#8d5524","#f4f1de","#22223b","#8d5524","#ffcc99","#8d5524","#ffcc99","#ffcc99","#8d5524",null],[null,null,null,"#ffcc99","#ffcc99","#22223b","#22223b","#22223b","#22223b","#22223b","#8d5524","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#22223b","#22223b","#22223b","#22223b","#22223b","#ffcc99","#8d5524","#8d5524","#8d5524","#ffcc99","#8d5524","#8d5524",null],[null,null,null,"#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#8d5524","#ffcc99","#ffcc99","#ffcc99","#8d5524","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#8d5524",null,null],[null,null,null,"#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#8d5524","#8d5524","#8d5524","#8d5524","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#8d5524",null,null,null],[null,null,null,"#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#000000","#ffcc99","#ffcc99","#ffcc99","#8d5524","#8d5524","#8d5524",null,null,null],[null,null,null,null,"#ffcc99","#ffcc99","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#ffcc99","#ffcc99","#ffcc99",null,null,null,null,null],[null,null,null,null,"#ffcc99","#ffcc99","#000000","#000000","#f4f1de","#f4f1de","#f4f1de","#f4f1de","#f4f1de","#f4f1de","#f4f1de","#f4f1de","#f4f1de","#f4f1de","#000000","#ffcc99","#000000","#000000","#ffcc99",null,null,null,null,null],[null,null,null,null,null,"#ffcc99","#ffcc99","#000000","#000000","#f4f1de","#f4f1de","#f4f1de","#000000","#f4f1de","#f4f1de","#f4f1de","#000000","#000000","#ffcc99","#ffcc99","#ffcc99","#ffcc99",null,null,null,null,null,null],[null,null,null,null,null,"#ffcc99","#ffcc99","#ffcc99","#000000","#f4f1de","#f4f1de","#f4f1de","#000000","#f4f1de","#f4f1de","#f4f1de","#000000","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#8d5524",null,null,null,null,null,null],[null,null,null,null,null,null,"#ffcc99","#ffcc99","#ffcc99","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#8d5524",null,null,null,null,null,null],[null,null,null,null,null,null,null,"#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#8d5524","#ffcc99",null,null,null,null,null,null],[null,null,null,null,null,null,null,null,"#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#8d5524","#8d5524","#ffcc99","#ffcc99","#000000","#118ab2","#118ab2","#118ab2","#118ab2",null],[null,null,null,null,null,null,null,null,null,"#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#8d5524","#8d5524","#ffcc99","#ffcc99","#ffcc99","#000000","#118ab2","#118ab2","#118ab2","#118ab2","#118ab2","#118ab2"],[null,null,null,null,null,null,null,null,null,null,null,null,null,"#8d5524","#8d5524","#8d5524","#ffcc99","#ffcc99","#ffcc99","#000000","#000000","#118ab2","#118ab2","#f4f1de","#f4f1de","#f4f1de","#f4f1de","#118ab2"],[null,null,null,null,null,null,null,null,null,null,null,"#118ab2","#118ab2","#000000","#000000","#000000","#000000","#000000","#000000","#118ab2","#118ab2","#f4f1de","#f4f1de","#118ab2","#118ab2","#118ab2","#118ab2","#f4f1de"],[null,null,null,null,null,null,null,null,null,null,"#118ab2","#118ab2","#118ab2","#118ab2","#118ab2","#118ab2","#118ab2","#118ab2","#118ab2","#118ab2","#f4f1de","#118ab2","#f4f1de","#118ab2","#118ab2","#118ab2","#f4f1de","#118ab2"],[null,null,null,null,null,null,null,null,null,"#118ab2","#118ab2","#118ab2","#118ab2","#118ab2","#118ab2","#118ab2","#118ab2","#118ab2","#118ab2","#118ab2","#f4f1de","#118ab2","#f4f1de","#f4f1de","#f4f1de","#118ab2","#f4f1de","#118ab2"],[null,null,null,null,null,null,null,null,null,"#118ab2","#118ab2","#118ab2","#118ab2","#118ab2","#118ab2","#118ab2","#118ab2","#118ab2","#118ab2","#f4f1de","#f4f1de","#118ab2","#f4f1de","#118ab2","#f4f1de","#118ab2","#f4f1de","#118ab2"],[null,null,null,null,null,null,null,null,"#118ab2","#118ab2","#118ab2","#118ab2","#118ab2","#118ab2","#118ab2","#118ab2","#118ab2","#118ab2","#118ab2","#f4f1de","#118ab2","#118ab2","#f4f1de","#118ab2","#f4f1de","#f4f1de","#f4f1de","#118ab2"]]';
+
   function generateDefaultIconGrid(character){
-    const g = Array.from({length: GRID_ROWS}, () => new Array(GRID_COLS).fill(null));
-    const { jacket, hair, skin } = character.baseColors;
-    for(let r=1; r<=5; r++) for(let c=3; c<=10; c++) g[r][c] = hair;
-    for(let r=5; r<=11; r++) for(let c=4; c<=9; c++) g[r][c] = skin;
-    g[7][5] = '#22223b'; g[7][8] = '#22223b';
-    for(let r=11; r<=12; r++) for(let c=5; c<=8; c++) g[r][c] = skin;
-    for(let r=12; r<=17; r++) for(let c=1; c<=12; c++) g[r][c] = jacket;
-    return g;
+  // Se è Giovanni Becattini e c'è una griglia salvata nel codice, usa quella
+  if(character.id === 'jumper' && SAVED_GIOVANNI_JSON && SAVED_GIOVANNI_JSON !== 'null'){
+    try {
+      return JSON.parse(SAVED_GIOVANNI_JSON);
+    } catch(e) {}
+  } else if(character.id === 'magnet' && SAVED_MELA_JSON && SAVED_MELA_JSON !== 'null'){
+    try {
+      return JSON.parse(SAVED_MELA_JSON);
+    } catch(e) {} 
+
   }
- 
-  let iconGrids = {};
+
+  // Griglia generica di default se non presente o invalida
+  const g = Array.from({length: GRID_ROWS}, () => new Array(GRID_COLS).fill(null));
+  const { jacket, hair, skin } = character.baseColors;
+  for(let r=1; r<=5; r++) for(let c=3; c<=10; c++) g[r][c] = hair;
+  for(let r=5; r<=11; r++) for(let c=4; c<=9; c++) g[r][c] = skin;
+  g[7][5] = '#22223b'; g[7][8] = '#22223b';
+  for(let r=11; r<=12; r++) for(let c=5; c<=8; c++) g[r][c] = skin;
+  for(let r=12; r<=17; r++) for(let c=1; c<=12; c++) g[r][c] = jacket;
+  return g;
+}
+  
+let iconGrids = {};
  
   async function loadIconGrid(id){
     try{
@@ -755,58 +773,86 @@ body {
     ctx.beginPath(); ctx.arc(x-1.5, c.y-1.5, 1.5, 0, Math.PI*2); ctx.fill();
   }
  
-  function drawCharacterSprite(tctx, x, y, status, legFrame, colors){
-    if(status === 'slide'){
-      tctx.fillStyle = colors.jacket;
-      tctx.fillRect(x-9, y-6, 18, 10);
-      tctx.fillStyle = colors.skin;
-      tctx.fillRect(x-5, y-10, 10, 6);
-      tctx.fillStyle = colors.hair;
-      tctx.fillRect(x-5, y-10, 10, 2);
-    } else {
-      tctx.fillStyle = colors.jacket;
-      tctx.fillRect(x-6, y-18, 12, 14);
-      tctx.fillStyle = colors.skin;
-      tctx.fillRect(x-5, y-26, 10, 9);
-      tctx.fillStyle = colors.hair;
-      tctx.fillRect(x-5, y-26, 10, 3);
-      tctx.fillStyle = '#22223b';
-      if(status === 'jump'){
-        tctx.fillRect(x-6, y-4, 5, 8);
-        tctx.fillRect(x+1, y-4, 5, 8);
-      } else if(legFrame === 0){
-        tctx.fillRect(x-6, y-4, 5, 10);
-        tctx.fillRect(x+1, y-4, 5, 6);
-      } else {
-        tctx.fillRect(x-6, y-4, 5, 6);
-        tctx.fillRect(x+1, y-4, 5, 10);
-      }
-      tctx.fillStyle = colors.jacket;
-      tctx.fillRect(x-9, y-16, 3, 8);
-      tctx.fillRect(x+6, y-16, 3, 8);
-    }
-  }
- 
-  function drawPlayer(){
-    const x = player.x;
-    const y = PLAYER_Y - player.jumpOffset;
+  // Funzione per disegnare la griglia dell'icona direttamente sulle coordinate di gioco
+function drawIconGridAt(tctx, grid, x, y, width, height) {
+  if (!grid) return;
+  const cellW = width / GRID_COLS;
+  const cellH = height / GRID_ROWS;
+  const startX = x - width / 2;
+  const startY = y - height;
 
-    if(player.ability === 'magnet'){
-      ctx.strokeStyle = 'rgba(199,125,255,0.35)';
-      ctx.lineWidth = 1;
-      ctx.setLineDash([3,3]);
-      ctx.beginPath();
-      ctx.arc(x, y-10, LANE_WIDTH*1.15, 0, Math.PI*2);
-      ctx.stroke();
-      ctx.setLineDash([]);
+  for (let r = 0; r < GRID_ROWS; r++) {
+    for (let c = 0; c < GRID_COLS; c++) {
+      const val = grid[r][c];
+      if (val) {
+        tctx.fillStyle = val;
+        tctx.fillRect(
+          Math.floor(startX + c * cellW),
+          Math.floor(startY + r * cellH),
+          Math.ceil(cellW),
+          Math.ceil(cellH)
+        );
+      }
     }
-    const blinking = player.invuln > 0 && Math.floor(performance.now()/90) % 2 === 0;
-    if(blinking) ctx.globalAlpha = 0.4;
-    drawCharacterSprite(ctx, x, y, player.status, player.legFrame, player.colors || CHARACTERS[0].baseColors);
-    if(blinking) ctx.globalAlpha = 1;
   }
+}
+
+function drawCharacterSprite(tctx, x, y, status, legFrame, colors){
+  if(status === 'slide'){
+    tctx.fillStyle = colors.jacket;
+    tctx.fillRect(x-9, y-6, 18, 10);
+    tctx.fillStyle = colors.skin;
+    tctx.fillRect(x-5, y-10, 10, 6);
+    tctx.fillStyle = colors.hair;
+    tctx.fillRect(x-5, y-10, 10, 2);
+  } else {
+    tctx.fillStyle = colors.jacket;
+    tctx.fillRect(x-6, y-18, 12, 14);
+    tctx.fillStyle = colors.skin;
+    tctx.fillRect(x-5, y-26, 10, 9);
+    tctx.fillStyle = colors.hair;
+    tctx.fillRect(x-5, y-26, 10, 3);
+    tctx.fillStyle = '#22223b';
+    if(status === 'jump'){
+      tctx.fillRect(x-6, y-4, 5, 8);
+      tctx.fillRect(x+1, y-4, 5, 8);
+    } else if(legFrame === 0){
+      tctx.fillRect(x-6, y-4, 5, 10);
+      tctx.fillRect(x+1, y-4, 5, 6);
+    } else {
+      tctx.fillRect(x-6, y-4, 5, 6);
+      tctx.fillRect(x+1, y-4, 5, 10);
+    }
+    tctx.fillStyle = colors.jacket;
+    tctx.fillRect(x-9, y-16, 3, 8);
+    tctx.fillRect(x+6, y-16, 3, 8);
+  }
+}
+
+function drawPlayer(){
+  const x = player.x;
+  const y = PLAYER_Y - player.jumpOffset;
+
+  if(player.ability === 'magnet'){
+    ctx.strokeStyle = 'rgba(199,125,255,0.35)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([3,3]);
+    ctx.beginPath();
+    ctx.arc(x, y-10, LANE_WIDTH*1.15, 0, Math.PI*2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  const blinking = player.invuln > 0 && Math.floor(performance.now()/90) % 2 === 0;
+  if(blinking) ctx.globalAlpha = 0.4;
+
+  // Disegna il personaggio stilizzato predefinito durante la corsa
+  drawCharacterSprite(ctx, x, y, player.status, player.legFrame, player.colors || CHARACTERS[0].baseColors);
+
+  if(blinking) ctx.globalAlpha = 1;
+}
   
-  function drawParticles(){
+function drawParticles(){
     particles.forEach(p=>{
       const t = p.life / p.maxLife;
       ctx.globalAlpha = t;
