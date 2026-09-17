@@ -3,10 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Grest Organizator</title>
+    <title>Grest Organizator - Admin</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.1/dist/xlsx.full.min.js"></script>
     <link rel="stylesheet" href="style.css">
+<base target="_blank">
 </head>
 <body>
 
@@ -15,10 +16,10 @@
         <button id="menuToggle" type="button" aria-expanded="false">Menu</button>
         <div class="top-right-dropdown" id="menuDropdown" aria-hidden="true">
             <a href="index.html" class="dropdown-item">Pagina principale/Attività</a>
+            <a href="appello.html" class="dropdown-item">Appello</a>
             <a href="animatori_grest.html" class="dropdown-item">Animatori squadre</a>
             <a href="avvisi_grest.html" class="dropdown-item">Avvisi</a>
             <a href="grest-rush.html" class="dropdown-item">Grest Rush</a>
-            <a href="admin_grest.html" class="dropdown-item">Aggiorna</a>
         </div>
     </div>
 
@@ -296,6 +297,26 @@
             </div>
         </div>
 
+
+
+            <!-- Card Conteggi Presenze Giornaliere (aggiornamento automatico) -->
+            <div class="card presenze-card" id="presenzeCard" style="width: 100%; margin-top: 20px;">
+                <div class="register-header">
+                    <h3>Presenze di oggi</h3>
+                    <span class="register-legend" id="presenzeDataLabel"></span>
+                </div>
+                <div class="presenze-stats">
+                    <div class="presenze-stat">
+                        <span class="presenze-num" id="presenzePresentiCount">–</span>
+                        <span class="presenze-label">Presenti</span>
+                    </div>
+                    <div class="presenze-stat">
+                        <span class="presenze-num" id="presenzeMensaCount">–</span>
+                        <span class="presenze-label">A mensa</span>
+                    </div>
+                </div>
+                <p class="presenze-hint">Conteggio aggiornato automaticamente (bambini + animatori).</p>
+            </div>
 
             <!-- Registro Valutazioni Animatori -->
         <div class="card register-card full-width">

@@ -2196,3 +2196,150 @@ input[type="password"]::placeholder {
         flex-direction: column;
     }
 }
+/* ============================
+   APPELLO - Registro Presenze
+   ============================ */
+
+.appello-wrapper { margin-top: 24px; }
+
+.appello-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.appello-title { color: #ff9c3d; margin: 0; }
+
+.appello-day-picker { display: flex; align-items: center; gap: 8px; }
+.appello-day-label { color: #ddd; font-size: 0.9rem; }
+
+.appello-day-input {
+    background: #1c1310;
+    color: #f5f5f5;
+    border: 1px solid #4a372a;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 0.9rem;
+}
+
+.appello-table-wrapper {
+    overflow-x: auto;
+    border-radius: 12px;
+    border: 1px solid #3a2a20;
+}
+
+.appello-table { width: 100%; border-collapse: collapse; background: #140d0a; }
+
+.appello-th {
+    text-align: left;
+    padding: 14px 16px;
+    background: #2c1c12;
+    color: #ff9c3d;
+    font-weight: 600;
+    white-space: nowrap;
+}
+.appello-th-check, .appello-th-riconsegna { text-align: center; }
+
+.appello-row-bambino, .appello-row-animatore { border-top: 1px solid #2a1e16; }
+.appello-row-bambino:hover, .appello-row-animatore:hover { background: rgba(255, 156, 61, 0.06); }
+
+.appello-cell-nome {
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    color: #f5f5f5;
+    font-weight: 500;
+}
+
+.appello-cell-check, .appello-cell-riconsegna { padding: 12px 16px; text-align: center; }
+
+.appello-checkbox { width: 20px; height: 20px; accent-color: #ff9c3d; cursor: pointer; }
+
+.appello-riconsegna-input {
+    width: 100%;
+    max-width: 180px;
+    background: #1c1310;
+    color: #f5f5f5;
+    border: 1px solid #4a372a;
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 0.85rem;
+}
+.appello-riconsegna-input:disabled { opacity: 0.25; cursor: not-allowed; }
+
+.appello-stellina { color: #ffd23f; font-size: 1rem; line-height: 1; flex-shrink: 0; }
+
+.appello-separator-row td {
+    background: #241811;
+    color: #ffb066;
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    padding: 10px 16px;
+}
+
+.appello-empty-row td { text-align: center; padding: 20px; color: #888; }
+
+/* Card Conteggi Presenze Giornaliere (Admin) */
+.presenze-card .presenze-stats {
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin: 10px 0;
+}
+
+.presenze-stat {
+    flex: 1;
+    min-width: 140px;
+    max-width: 220px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 18px 14px;
+    border-radius: 16px;
+    border: 1px solid rgba(255, 140, 26, 0.16);
+    background: rgba(255, 140, 26, 0.06);
+}
+
+.presenze-num {
+    font-size: 2.2rem;
+    font-weight: 800;
+    color: var(--accent);
+    line-height: 1;
+}
+
+.presenze-label {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.presenze-hint {
+    margin: 8px 0 0;
+    text-align: center;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.member-badge {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 1px 6px;
+    border-radius: 999px;
+    margin-left: 6px;
+    vertical-align: middle;
+}
+.member-badge-bambino   { background: #ffd54f; color: #5b3a00; }
+.member-badge-animatore { background: #ff6a00; color: #fff; }

@@ -42,6 +42,21 @@ let selezioneProgramma = {
 let registroProgrammazione = [];
 
 
+let appelloBambini = [];
+let appelloAnimatori = [];
+let appelloStatusMap = {};
+let appelloPresenzeBambiniMap = {};
+let appelloPresenzeAnimatoriMap = {};
+let appelloLoadId = 0;
+let appelloSquadraCorrente = null;
+const appelloSaveQueues = new Map();
+
+
+let presenzeRealtimeChannel = null;
+let presenzePollingTimer = null;
+const PRESENZE_POLLING_MS = 1500; // fallback ogni 1,5 secondi
+
+
 const DAILY_EVALUATION_STORAGE_KEY = 'grest_daily_evaluations_v1';
 
 /**
@@ -232,6 +247,8 @@ function unlockAdminArea() {
 
     renderCalendar(currentCalendarDate);
     mostraAnimatori();
+
+    avviaAggiornamentoPresenze();
 }
 
 function renderCalendar(date) {
@@ -1480,6 +1497,58 @@ function saveDailyEvaluation(animatoreId, giorno, value) {
     }));
 }
 
+/* =========================================================
+   HELPER: caricamento bambini (con cache)
+   Tabella "bambini" → id_bambini, nome, cognome, classe, squadra (int4)
+   ========================================================= */
+let bambiniCacheGrest = null;
+let bambiniCachePromise = null;
+
+async function caricaTuttiBambiniGrest() {
+    if (bambiniCacheGrest) return bambiniCacheGrest;
+    if (bambiniCachePromise) return bambiniCachePromise;
+
+    if (typeof sb === 'undefined' || !sb) {
+        console.warn('[appello] Supabase non disponibile per caricare bambini');
+        return [];
+    }
+
+    bambiniCachePromise = (async () => {
+        try {
+            const { data, error } = await sb
+                .from('bambini')
+                .select('id_bambini, nome, cognome, classe, squadra');
+
+            if (error) throw error;
+
+            bambiniCacheGrest = (data || []).map(b => ({
+                id: b.id_bambini,
+                id_bambino: b.id_bambini,
+                nome: b.nome,
+                cognome: b.cognome,
+                classe: b.classe,
+                squadra: b.squadra,      // int4 → riferimento a squadre.id_squadra
+                tipo: 'bambino'
+            }));
+
+            console.log(`[squadra] Bambini caricati: ${bambiniCacheGrest.length}`);
+            return bambiniCacheGrest;
+        } catch (err) {
+            console.error('[squadra] Errore caricamento bambini:', err);
+            return [];
+        } finally {
+            bambiniCachePromise = null;
+        }
+    })();
+
+    return bambiniCachePromise;
+}
+
+function resetCacheBambiniGrest() {
+    bambiniCacheGrest = null;
+    bambiniCachePromise = null;
+}
+
 async function updateDashboard() {
     const account = getSelectedAccount();
     const inputDate = document.getElementById('activityDate');
@@ -1504,7 +1573,7 @@ async function updateDashboard() {
         if (teamInfo) teamInfo.textContent = 'Seleziona un account per vedere la squadra.';
         if (membersEl) membersEl.innerHTML = '';
         if (poolInfo) poolInfo.textContent = 'Seleziona un account e un giorno per controllare la piscina.';
-        
+
         const refereeInfo = document.getElementById('refereeInfo');
         const dailyGameInfo = document.getElementById('dailyGameInfo');
         if (refereeInfo) refereeInfo.textContent = '-';
@@ -1520,17 +1589,15 @@ async function updateDashboard() {
     const nomeCompleto = `${account.nome || '-'} ${account.cognome || ''}`.trim();
     if (currentAccountLabel) currentAccountLabel.textContent = nomeCompleto;
     if (nameEl) nameEl.textContent = nomeCompleto;
-    
-    // 1. Pulisce il Ruolo
-    const ruoloPulito = typeof getBaseRole === 'function' 
-        ? getBaseRole(account.ruolo) 
+
+    // 1. Ruolo pulito
+    const ruoloPulito = typeof getBaseRole === 'function'
+        ? getBaseRole(account.ruolo)
         : String(account.ruolo || '-').split('(')[0].trim();
     if (roleEl) roleEl.textContent = `Ruolo: ${ruoloPulito}`;
 
-    // 2. Estrazione dinamica dal DB delle squadre
+    // 2. Lista squadre (dal DB)
     let listaSquadre = typeof SQUADRE !== 'undefined' ? SQUADRE : (window.SQUADRE || []);
-    
-    // Se la lista globale è vuota, la recupera direttamente dal client Supabase
     if ((!listaSquadre || listaSquadre.length === 0) && typeof sb !== 'undefined') {
         const { data: dbSquadre } = await sb.from('squadre').select('*');
         if (dbSquadre) {
@@ -1539,49 +1606,78 @@ async function updateDashboard() {
         }
     }
 
-    // Risoluzione ID -> Nome Squadra
+    // Risoluzione ID → Nome squadra
     const squadraRaw = String(account.squadra || account.id_squadra || '').trim();
     let squadraNome = squadraRaw;
 
-    const sqTrovata = listaSquadre.find(s => 
-        String(s.id_squadra) === squadraRaw || 
-        String(s.id) === squadraRaw || 
+    const sqTrovata = listaSquadre.find(s =>
+        String(s.id_squadra) === squadraRaw ||
+        String(s.id) === squadraRaw ||
         String(s.nome).toLowerCase() === squadraRaw.toLowerCase()
     );
-
     if (sqTrovata && sqTrovata.nome) {
         squadraNome = sqTrovata.nome;
     }
 
     if (teamEl) teamEl.textContent = `Squadra: ${squadraNome || '-'}`;
 
-    // 3. Membri della squadra
-    const members = squadraRaw ? animatoriAccounts.filter(m => {
-        const mSquadra = String(m.squadra || m.id_squadra || '').trim();
-        return mSquadra === squadraRaw || 
-               mSquadra.toLowerCase() === squadraNome.toLowerCase() || 
-               (m.squadraNome && m.squadraNome.toLowerCase() === squadraNome.toLowerCase());
-    }) : [];
+    // 3. Membri della squadra: animatori + bambini
+    const normalizza = v => String(v ?? '').trim();
+
+    const matchSquadra = m => {
+        const mSquadra = normalizza(m.squadra || m.id_squadra);
+        if (!mSquadra) return false;
+        if (mSquadra === squadraRaw) return true;
+        if (squadraNome && m.squadraNome) {
+            return normalizza(m.squadraNome).toLowerCase() ===
+                   normalizza(squadraNome).toLowerCase();
+        }
+        return false;
+    };
+
+    const animatoriSquadra = squadraRaw
+        ? (animatoriAccounts || []).filter(matchSquadra).map(m => ({
+            ...m,
+            id: m.id_animatore ?? m.id,
+            id_animatore: m.id_animatore ?? m.id,
+            tipo: 'animatore'
+        }))
+        : [];
+
+    const tuttiBambini = await caricaTuttiBambiniGrest();
+    const bambiniSquadra = squadraRaw
+        ? tuttiBambini.filter(matchSquadra)
+        : [];
+
+    const ordinaPerCognome = (a, b) =>
+        String(a.cognome || '').localeCompare(String(b.cognome || ''), 'it');
+    bambiniSquadra.sort(ordinaPerCognome);
+    animatoriSquadra.sort(ordinaPerCognome);
+
+    const members = [...bambiniSquadra, ...animatoriSquadra];
+
+    console.log(
+        `[squadra] id="${squadraRaw}" nome="${squadraNome}" → ` +
+        `${animatoriSquadra.length} animatori, ${bambiniSquadra.length} bambini`,
+        { animatoriSquadra, bambiniSquadra }
+    );
 
     if (teamInfo) {
         teamInfo.textContent = members.length
-            ? `La tua squadra è ${squadraNome} con ${members.length} componente${members.length === 1 ? '' : 'i'}.`
+            ? `La tua squadra è ${squadraNome} con ${members.length} component${members.length < 2 ? 'e' : 'i'}.`
             : 'Nessuna squadra assegnata.';
     }
-    if (membersEl) {
-        membersEl.innerHTML = members.length
-            ? members.map(m => `<li>${m.nome || ''} ${m.cognome || ''}${m.id === account.id ? ' (tu)' : ''}</li>`).join('')
-            : '<li>Nessun componente trovato.</li>';
-    }
 
-    // 4. Controllo Piscina tollerante alle variazioni di formato (es: "blu", "Blu", "2")
+    renderComponentiSquadra(members, account.id ?? account.id_animatore);
+
+    // 4. Controllo Piscina
     if (poolInfo) {
         const squadraValida = squadraNome && squadraNome !== '-' && squadraNome.toLowerCase() !== 'nessuna';
-        
-        // Cerca il turno provando sia con il Nome (es: "Rossa") che con l'ID o forma minuscola (es: "rossi")
+
         let turnoPiscina = squadraValida ? getTurnoPiscinaSquadra(squadraNome, date) : null;
         if (!turnoPiscina && squadraValida) {
-            turnoPiscina = getTurnoPiscinaSquadra(squadraRaw, date) || getTurnoPiscinaSquadra(squadraNome.toLowerCase(), date);
+            turnoPiscina = getTurnoPiscinaSquadra(squadraRaw, date)
+                || getTurnoPiscinaSquadra(squadraNome.toLowerCase(), date);
         }
 
         poolInfo.textContent = !squadraValida
@@ -1600,6 +1696,10 @@ async function updateDashboard() {
 
     if (typeof aggiornaInfoArbitraggioEGioco === 'function') {
         await aggiornaInfoArbitraggioEGioco(account, date);
+    }
+
+    if (account && account.id_animatore) {
+        localStorage.setItem('selectedAnimatoreId', account.id_animatore);
     }
 }
 
@@ -3488,3 +3588,619 @@ if (accountSelect) {
         if (typeof updateDashboard === 'function') updateDashboard();
     });
 }
+
+//======================================
+// APPELLO - Registro Presenze
+//======================================
+
+
+function formattaDataISO(date) {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+}
+
+function parseDataAppello(value) {
+    const [year, month, day] = String(value || '').split('-').map(Number);
+    if (!year || !month || !day) return new Date();
+    return new Date(year, month - 1, day);
+}
+
+function escapeAppelloHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, char => {
+        switch (char) {
+            case '&': return '&amp;';
+            case '<': return '&lt;';
+            case '>': return '&gt;';
+            case '"': return '&quot;';
+            case "'": return '&#039;';
+            default: return char;
+        }
+    });
+}
+
+function getAppelloIdSquadra(persona) {
+    return String(persona?.id_squadra ?? persona?.squadra ?? '').trim();
+}
+
+function getAppelloPresenza(tipo, id) {
+    return tipo === 'animatore'
+        ? appelloPresenzeAnimatoriMap[id]
+        : appelloPresenzeBambiniMap[id];
+}
+
+function accodaSalvataggioAppello(chiave, operazione) {
+    const precedente = appelloSaveQueues.get(chiave) || Promise.resolve();
+    const corrente = precedente.then(operazione, operazione);
+    appelloSaveQueues.set(chiave, corrente);
+
+    return corrente.finally(() => {
+        if (appelloSaveQueues.get(chiave) === corrente) {
+            appelloSaveQueues.delete(chiave);
+        }
+    });
+}
+
+async function caricaAppello(dataSelezionata) {
+    const tbody = document.getElementById('appelloBody');
+    if (!tbody) return;
+
+    const loadId = ++appelloLoadId;
+    appelloBambini = [];
+    appelloAnimatori = [];
+    appelloStatusMap = {};
+    appelloPresenzeBambiniMap = {};
+    appelloPresenzeAnimatoriMap = {};
+
+    if (typeof sb === 'undefined' || !sb) {
+        tbody.innerHTML = '<tr class="appello-empty-row"><td colspan="4">Connessione a Supabase non disponibile.</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = '<tr class="appello-empty-row"><td colspan="4">Caricamento appello in corso...</td></tr>';
+
+    const dataISO = formattaDataISO(dataSelezionata);
+    const weekNumber = typeof getSettimanaCycle === 'function'
+        ? getSettimanaCycle(dataSelezionata)
+        : 1;
+
+    try {
+        const [bambiniRes, animatoriRes, statusRes, presenzeRes] = await Promise.all([
+            sb.from('bambini').select('*').order('cognome', { ascending: true }),
+            sb.from('animatori').select('*').order('cognome', { ascending: true }),
+            sb.from('status_bimbi').select('id_bambino, stellina'),
+            sb.from('presenze').select('*').eq('data', dataISO)
+        ]);
+
+        if (loadId !== appelloLoadId) return;
+
+        for (const [tabella, result] of [
+            ['bambini', bambiniRes],
+            ['animatori', animatoriRes],
+            ['status_bimbi', statusRes],
+            ['presenze', presenzeRes]
+        ]) {
+            if (result.error) {
+                throw new Error(`${tabella}: ${result.error.message}`);
+            }
+        }
+
+        const tuttiBambini = (bambiniRes.data || []).map(b => ({
+            ...b,
+            id_bambino: b.id_bambini
+        }));
+        const tuttiAnimatori = animatoriRes.data || [];
+        const accountSelezionato = typeof getSelectedAccount === 'function'
+            ? getSelectedAccount()
+            : null;
+
+        const selectedAccountId = accountSelezionato?.id
+            || new URLSearchParams(window.location.search).get('selectedAccountId')
+            || localStorage.getItem('selectedAccountId')
+            || sessionStorage.getItem('selectedAccountId');
+
+        const selectedAnimatoreId = accountSelezionato?.id_animatore
+            ?? (selectedAccountId ? null : localStorage.getItem('selectedAnimatoreId'));
+
+        const animatoreCorrente = tuttiAnimatori.find(a => {
+            if (selectedAnimatoreId !== null && selectedAnimatoreId !== undefined && selectedAnimatoreId !== '') {
+                return String(a.id_animatore) === String(selectedAnimatoreId);
+            }
+            return selectedAccountId && String(getAccountId(a)) === String(selectedAccountId);
+        });
+
+        if (!animatoreCorrente) {
+            tbody.innerHTML = '<tr class="appello-empty-row"><td colspan="4">Seleziona un account per visualizzare l’appello della tua squadra.</td></tr>';
+            return;
+        }
+
+        const idSquadra = getAppelloIdSquadra(animatoreCorrente);
+        if (!idSquadra) {
+            tbody.innerHTML = '<tr class="appello-empty-row"><td colspan="4">Nessuna squadra assegnata al tuo account.</td></tr>';
+            return;
+        }
+
+        let nomeSquadra = idSquadra;
+        try {
+            const { data: squadraRow } = await sb
+                .from('squadre')
+                .select('id_squadra, nome')
+                .eq('id_squadra', idSquadra)
+                .maybeSingle();
+            if (squadraRow?.nome) nomeSquadra = squadraRow.nome;
+        } catch (_) { /* ignora, uso l'ID */ }
+        
+        appelloSquadraCorrente = {
+            id: idSquadra,
+            nome: nomeSquadra
+        };
+
+        appelloBambini = tuttiBambini.filter(b =>
+            getAppelloIdSquadra(b) === idSquadra
+        );
+
+        appelloAnimatori = tuttiAnimatori.filter(a => {
+            if (getAppelloIdSquadra(a) !== idSquadra) return false;
+            if (!a.settimana) return true;
+
+            const settimane = Array.isArray(a.settimana) ? a.settimana : [a.settimana];
+            return settimane.map(String).includes(String(weekNumber));
+        });
+
+        (statusRes.data || []).forEach(status => {
+            appelloStatusMap[status.id_bambino] = status;
+        });
+
+        (presenzeRes.data || []).forEach(presenza => {
+            if (presenza.id_bambino !== null && presenza.id_bambino !== undefined) {
+                appelloPresenzeBambiniMap[presenza.id_bambino] = presenza;
+            }
+            if (presenza.id_animatore !== null && presenza.id_animatore !== undefined) {
+                appelloPresenzeAnimatoriMap[presenza.id_animatore] = presenza;
+            }
+        });
+
+        renderAppello();
+    } catch (err) {
+        if (loadId !== appelloLoadId) return;
+        console.error('Errore caricamento appello:', err);
+        tbody.innerHTML = '<tr class="appello-empty-row"><td colspan="4"></td></tr>';
+        tbody.querySelector('td').textContent =
+            `Errore: ${err.message || 'Impossibile recuperare i dati dell’appello.'}`;
+    }
+}
+
+function renderAppello() {
+    const tbody = document.getElementById('appelloBody');
+    if (!tbody) return;
+
+    if (appelloBambini.length === 0 && appelloAnimatori.length === 0) {
+        tbody.innerHTML = '<tr class="appello-empty-row"><td colspan="4">Nessun nominativo presente.</td></tr>';
+        return;
+    }
+
+    const righeBambini = appelloBambini.length > 0
+        ? appelloBambini.map(b => renderRigaAppello(b, 'bambino')).join('')
+        : '<tr class="appello-empty-row"><td colspan="4">Nessun bambino trovato per la tua squadra.</td></tr>';
+
+    const righeAnimatori = appelloAnimatori
+        .map(a => renderRigaAppello(a, 'animatore'))
+        .join('');
+
+    const separatore = appelloAnimatori.length > 0
+        ? '<tr class="appello-separator-row"><td colspan="4">Animatori</td></tr>'
+        : '';
+
+    tbody.innerHTML = righeBambini + separatore + righeAnimatori;
+}
+
+function renderRigaAppello(persona, tipo) {
+    const nomeCompleto = `${persona.cognome || ''} ${persona.nome || ''}`.trim();
+    const id = tipo === 'bambino' ? persona.id_bambino : persona.id_animatore;
+    const presenzaEsistente = getAppelloPresenza(tipo, id);
+
+    const haStellina = tipo === 'bambino'
+        && appelloStatusMap[id]?.stellina === 'si';
+    const stellinaHtml = haStellina
+        ? '<span class="appello-stellina">★</span>'
+        : '';
+
+    const presenteChecked = presenzaEsistente?.ora_arrivo ? 'checked' : '';
+    const mensaChecked = presenzaEsistente?.pranzo === 'si' ? 'checked' : '';
+    const rigaClasse = tipo === 'bambino'
+        ? 'appello-row-bambino'
+        : 'appello-row-animatore';
+
+    const riconsegnaCell = tipo === 'bambino'
+        ? `<input type="text" class="appello-riconsegna-input" data-id="${id}" data-tipo="${tipo}" placeholder="Chi ritira / orario" value="${escapeAppelloHtml(presenzaEsistente?.riconsegna || '')}">`
+        : '<input type="text" class="appello-riconsegna-input" disabled>';
+
+    return `
+        <tr class="${rigaClasse}">
+            <td class="appello-cell-nome">
+                <span>${escapeAppelloHtml(nomeCompleto)}</span>
+                ${stellinaHtml}
+            </td>
+            <td class="appello-cell-check">
+                <input type="checkbox" class="appello-checkbox appello-check-giornata" data-id="${id}" data-tipo="${tipo}" ${presenteChecked}>
+            </td>
+            <td class="appello-cell-check">
+                <input type="checkbox" class="appello-checkbox appello-check-mensa" data-id="${id}" data-tipo="${tipo}" ${mensaChecked}>
+            </td>
+            <td class="appello-cell-riconsegna">
+                ${riconsegnaCell}
+            </td>
+        </tr>
+    `;
+}
+
+function ripristinaControlliAppello(tipo, id) {
+    const presenza = getAppelloPresenza(tipo, id);
+    const presenteEl = document.querySelector(
+        `.appello-check-giornata[data-id="${id}"][data-tipo="${tipo}"]`
+    );
+    const mensaEl = document.querySelector(
+        `.appello-check-mensa[data-id="${id}"][data-tipo="${tipo}"]`
+    );
+
+    if (presenteEl) presenteEl.checked = Boolean(presenza?.ora_arrivo);
+    if (mensaEl) mensaEl.checked = presenza?.pranzo === 'si';
+}
+
+async function salvaPresenzaAppello(idPersona, { presente, mensa, riconsegna } = {}, tipo = 'bambino') {
+    if (tipo !== 'bambino' && tipo !== 'animatore') {
+        const messaggio = `Errore salvataggio presenza: tipo "${tipo}" non valido.`;
+        console.error(messaggio);
+        if (typeof mostraNotifica === 'function') {
+            mostraNotifica(messaggio, 'error');
+        }
+        return false;
+    }
+
+    const id = Number(idPersona);
+    if (!Number.isInteger(id) || String(idPersona ?? '').trim() === '') {
+        const messaggio = 'Errore salvataggio presenza: ID non valido.';
+        console.error(messaggio);
+        if (typeof mostraNotifica === 'function') {
+            mostraNotifica(messaggio, 'error');
+        }
+        return false;
+    }
+
+    const dataISO = document.getElementById('appelloDataInput')?.value
+        || formattaDataISO(new Date());
+    const chiaveCoda = `${tipo}:${id}:${dataISO}`;
+
+    return accodaSalvataggioAppello(chiaveCoda, async () => {
+        try {
+            if (typeof sb === 'undefined' || !sb) {
+                throw new Error('Connessione a Supabase non disponibile.');
+            }
+
+            const presenzaSalvata = getAppelloPresenza(tipo, id);
+            const presenzaEsistente = presenzaSalvata?.data === dataISO
+                ? presenzaSalvata
+                : null;
+            const payload = tipo === 'animatore'
+                ? { id_animatore: id, data: dataISO }
+                : { id_bambino: id, data: dataISO };
+
+            if (presente !== undefined) {
+                payload.ora_arrivo = presente
+                    ? presenzaEsistente?.ora_arrivo || new Date().toTimeString().slice(0, 8)
+                    : null;
+            }
+            if (mensa !== undefined) payload.pranzo = mensa ? 'si' : 'no';
+            if (tipo === 'bambino' && riconsegna !== undefined) {
+                payload.riconsegna = riconsegna;
+            }
+
+            const onConflict = tipo === 'animatore'
+                ? 'id_animatore,data'
+                : 'id_bambino,data';
+
+            const { data, error } = await sb
+                .from('presenze')
+                .upsert(payload, { onConflict })
+                .select('id_presenza, id_animatore, id_bambino, data, ora_arrivo, pranzo, riconsegna')
+                .single();
+
+            if (error) {
+                throw new Error(
+                    [error.code, error.message, error.details, error.hint]
+                        .filter(Boolean)
+                        .join(' | ')
+                );
+            }
+
+            const dataAttuale = document.getElementById('appelloDataInput')?.value
+                || formattaDataISO(new Date());
+
+            if (dataAttuale === dataISO) {
+                if (tipo === 'animatore') {
+                    appelloPresenzeAnimatoriMap[id] = data;
+                } else {
+                    appelloPresenzeBambiniMap[id] = data;
+                }
+            }
+
+            if (typeof mostraNotifica === 'function') {
+                mostraNotifica('Presenza aggiornata.', 'success');
+            }
+            return true;
+        } catch (err) {
+            const messaggio = `Errore salvataggio presenza: ${err.message}`;
+            console.error(messaggio);
+            if (typeof mostraNotifica === 'function') {
+                mostraNotifica(messaggio, 'error');
+            }
+            return false;
+        }
+    });
+}
+
+document.addEventListener('change', async event => {
+    if (!event.target.matches('.appello-check-giornata, .appello-check-mensa')) {
+        return;
+    }
+
+    const id = event.target.dataset.id;
+    const tipo = event.target.dataset.tipo;
+    const presenteEl = document.querySelector(
+        `.appello-check-giornata[data-id="${id}"][data-tipo="${tipo}"]`
+    );
+    const mensaEl = document.querySelector(
+        `.appello-check-mensa[data-id="${id}"][data-tipo="${tipo}"]`
+    );
+
+    if (!presenteEl || !mensaEl) return;
+
+    presenteEl.disabled = true;
+    mensaEl.disabled = true;
+
+    const salvata = await salvaPresenzaAppello(id, {
+        presente: presenteEl.checked,
+        mensa: mensaEl.checked
+    }, tipo);
+
+    if (!salvata) ripristinaControlliAppello(tipo, id);
+    presenteEl.disabled = false;
+    mensaEl.disabled = false;
+});
+
+document.addEventListener('blur', async event => {
+    if (!event.target.matches('.appello-riconsegna-input') || event.target.disabled) {
+        return;
+    }
+
+    const salvata = await salvaPresenzaAppello(
+        event.target.dataset.id,
+        { riconsegna: event.target.value },
+        'bambino'
+    );
+
+    if (!salvata) {
+        const presenza = appelloPresenzeBambiniMap[event.target.dataset.id];
+        event.target.value = presenza?.riconsegna || '';
+    }
+}, true);
+
+document.addEventListener('DOMContentLoaded', () => {
+    const dataInput = document.getElementById('appelloDataInput');
+    if (!dataInput) return;
+
+    dataInput.value = formattaDataISO(new Date());
+    dataInput.addEventListener('change', () => {
+        caricaAppello(parseDataAppello(dataInput.value));
+    });
+    caricaAppello(parseDataAppello(dataInput.value));
+});
+
+//======================================
+// CONTEGGIO PRESENZE GIORNALIERE (Admin)
+// Mostra in tempo reale quante persone (bambini + animatori)
+// sono presenti e quante sono a mensa oggi.
+//======================================
+/**
+ * Conta le presenze di oggi dalla tabella 'presenze' e aggiorna la card.
+ */
+async function caricaConteggiPresenze() {
+    const elPresenti = document.getElementById('presenzePresentiCount');
+    const elMensa = document.getElementById('presenzeMensaCount');
+    const elData = document.getElementById('presenzeDataLabel');
+
+    if (!elPresenti || !elMensa) return;
+    if (typeof sb === 'undefined' || !sb) return;
+
+    const oggiISO = formattaDataISO(new Date());
+
+    if (elData) {
+        elData.textContent = new Date().toLocaleDateString('it-IT', {
+            weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
+        });
+    }
+
+    try {
+        const { data, error } = await sb
+            .from('presenze')
+            .select('ora_arrivo, pranzo')
+            .eq('data', oggiISO);
+
+        if (error) throw error;
+
+        const righe = data || [];
+        // Righe con ora_arrivo valorizzata = persona presente (bambino O animatore)
+        const presenti = righe.filter(r => r.ora_arrivo !== null && r.ora_arrivo !== '').length;
+        const mensa = righe.filter(r => r.pranzo === 'si').length;
+
+        elPresenti.textContent = presenti;
+        elMensa.textContent = mensa;
+    } catch (err) {
+        console.error('Errore conteggio presenze:', err);
+        elPresenti.textContent = '–';
+        elMensa.textContent = '–';
+    }
+}
+
+/**
+ * Avvia l'aggiornamento automatico dei conteggi:
+ * 1) Realtime Supabase (istantaneo) se abilitato sulla tabella 'presenze'
+ * 2) Polling ogni 15 secondi come fallback sempre attivo
+ */
+function avviaAggiornamentoPresenze() {
+    if (!document.getElementById('presenzePresentiCount')) return;
+    if (typeof sb === 'undefined' || !sb) return;
+
+    // Caricamento iniziale
+    caricaConteggiPresenze();
+
+    // 1) Iscrizione Realtime (richiede replication abilitata su 'presenze')
+    try {
+        if (presenzeRealtimeChannel && typeof sb.removeChannel === 'function') {
+            sb.removeChannel(presenzeRealtimeChannel);
+        }
+        presenzeRealtimeChannel = sb
+            .channel('presenze-grest-realtime')
+            .on('postgres_changes',
+                { event: '*', schema: 'public', table: 'presenze' },
+                () => caricaConteggiPresenze()
+            )
+            .subscribe((status) => {
+                console.log('Realtime presenze:', status);
+            });
+    } catch (err) {
+        console.warn('Realtime non disponibile, uso solo il polling:', err);
+    }
+
+    // 2) Fallback polling
+    if (presenzePollingTimer) clearInterval(presenzePollingTimer);
+    presenzePollingTimer = setInterval(caricaConteggiPresenze, PRESENZE_POLLING_MS);
+}
+
+// Avvia anche se la pagina viene ricaricata mentre l'admin è già sbloccato
+document.addEventListener('DOMContentLoaded', () => {
+    if (document.getElementById('presenzeCard')) {
+        // Se la card esiste, prova subito (funziona anche senza login admin)
+        avviaAggiornamentoPresenze();
+    }
+});
+
+//======================================
+// NAVIGAZIONE MENU: forza apertura nella STESSA scheda
+// (evita l'apertura di nuove schede quando si esce dalla pagina admin)
+//======================================
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.top-right-dropdown a, .top-right-menu a').forEach(link => {
+        // Rimuove qualsiasi attributo target presente
+        link.removeAttribute('target');
+        // Forza la navigazione nella stessa scheda
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            if (link.href) {
+                window.location.href = link.href;
+            }
+        });
+    });
+});
+
+let paginaCorrenteComponentiSquadra = 1;
+const COMPONENTI_SQUADRA_PER_PAGINA = 4;
+let componentiSquadraCorrente = [];
+let componentiSquadraAccountId = null;
+
+function renderComponentiSquadra(members, accountId) {
+    const membersEl = document.getElementById('teamMembers');
+    if (!membersEl) return;
+
+    // Se cambio account, riparto da pagina 1
+    if (componentiSquadraAccountId !== accountId) {
+        paginaCorrenteComponentiSquadra = 1;
+    }
+    componentiSquadraCorrente = members;
+    componentiSquadraAccountId = accountId;
+
+    if (!members || members.length === 0) {
+        membersEl.innerHTML = '<li>Nessun componente trovato.</li>';
+        aggiornaPaginazioneComponentiSquadra(0);
+        return;
+    }
+
+    const totalePagine = Math.ceil(members.length / COMPONENTI_SQUADRA_PER_PAGINA);
+    if (paginaCorrenteComponentiSquadra > totalePagine) paginaCorrenteComponentiSquadra = totalePagine;
+    if (paginaCorrenteComponentiSquadra < 1) paginaCorrenteComponentiSquadra = 1;
+
+    const inizio = (paginaCorrenteComponentiSquadra - 1) * COMPONENTI_SQUADRA_PER_PAGINA;
+    const paginaMembri = members.slice(inizio, inizio + COMPONENTI_SQUADRA_PER_PAGINA);
+
+    membersEl.innerHTML = paginaMembri.map(m => {
+        const nomeCompleto = `${m.nome || ''} ${m.cognome || ''}`.trim();
+        const isTu = m.tipo === 'animatore' && String(m.id) === String(accountId);
+        const etichettaTu = isTu ? ' (tu)' : '';
+        const badge = m.tipo === 'bambino'
+            ? ' <span class="member-badge member-badge-bambino">B</span>'
+            : ' <span class="member-badge member-badge-animatore">A</span>';
+        return `<li>${nomeCompleto}${etichettaTu}${badge}</li>`;
+    }).join('');
+
+    aggiornaPaginazioneComponentiSquadra(totalePagine);
+}
+
+function aggiornaPaginazioneComponentiSquadra(totalePagine) {
+    const membersEl = document.getElementById('teamMembers');
+    if (!membersEl || !membersEl.parentNode) return;
+
+    let paginazione = document.getElementById('teamMembersPagination');
+    if (!paginazione) {
+        paginazione = document.createElement('div');
+        paginazione.id = 'teamMembersPagination';
+        paginazione.className = 'pagination-container';
+        membersEl.parentNode.insertBefore(paginazione, membersEl.nextSibling);
+    }
+
+    if (totalePagine <= 1) {
+        paginazione.innerHTML = '';
+        paginazione.style.display = 'none';
+        return;
+    }
+
+    paginazione.style.display = 'flex';
+
+    const dots = Array.from({ length: totalePagine }, (_, i) => {
+        const pagina = i + 1;
+        const attiva = pagina === paginaCorrenteComponentiSquadra ? 'active' : '';
+        return `<span class="pagination-dot ${attiva}" data-page="${pagina}"></span>`;
+    }).join('');
+
+    paginazione.innerHTML = `
+        <button type="button" class="pagination-btn"
+            ${paginaCorrenteComponentiSquadra === 1 ? 'disabled' : ''}
+            data-nav="prev">&#10094;</button>
+        <div class="pagination-dots">${dots}</div>
+        <button type="button" class="pagination-btn"
+            ${paginaCorrenteComponentiSquadra === totalePagine ? 'disabled' : ''}
+            data-nav="next">&#10095;</button>
+    `;
+}
+
+function cambiaPaginaComponentiSquadra(nuovaPagina) {
+    const totalePagine = Math.ceil(componentiSquadraCorrente.length / COMPONENTI_SQUADRA_PER_PAGINA) || 1;
+    if (nuovaPagina < 1 || nuovaPagina > totalePagine) return;
+    paginaCorrenteComponentiSquadra = nuovaPagina;
+    renderComponentiSquadra(componentiSquadraCorrente, componentiSquadraAccountId);
+}
+
+// Delega eventi: niente onclick inline, più pulito
+document.addEventListener('click', event => {
+    const nav = event.target.closest('.pagination-btn');
+    if (nav && nav.closest('#teamMembersPagination')) {
+        if (nav.disabled) return;
+        const delta = nav.dataset.nav === 'prev' ? -1 : 1;
+        cambiaPaginaComponentiSquadra(paginaCorrenteComponentiSquadra + delta);
+        return;
+    }
+    const dot = event.target.closest('.pagination-dot');
+    if (dot && dot.closest('#teamMembersPagination')) {
+        cambiaPaginaComponentiSquadra(Number(dot.dataset.page));
+    }
+});

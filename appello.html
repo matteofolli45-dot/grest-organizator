@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grest Organizator - Appello</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Appello - GREST <span class="current-year"></span></h1>
+
+        <div class="top-right-menu">
+            <button id="menuToggle" type="button" aria-expanded="false">Menu</button>
+            <div class="top-right-dropdown" id="menuDropdown" aria-hidden="true">
+                <a href="index.html" class="dropdown-item">Pagina principale/Attività</a>
+                <a href="animatori_grest.html" class="dropdown-item">Animatori squadre</a>
+                <a href="avvisi_grest.html" class="dropdown-item">Avvisi</a>
+                <a href="grest-rush.html" class="dropdown-item">Grest Rush</a>
+                <a href="admin_grest.html" class="dropdown-item">Admin</a>
+            </div>
+        </div>
+
+        <div class="appello-wrapper">
+            <div class="appello-header">
+                <h3 class="appello-title">Registro Presenze</h3>
+                <div class="appello-day-picker">
+                    <label for="appelloDataInput" class="appello-day-label">Giorno:</label>
+                    <input type="date" id="appelloDataInput" class="appello-day-input">
+                </div>
+            </div>
+
+            <div class="appello-table-wrapper">
+                <table class="appello-table" id="appelloTable">
+                    <thead>
+                        <tr class="appello-head-row">
+                            <th class="appello-th appello-th-nome">Cognome e Nome</th>
+                            <th class="appello-th appello-th-check">Presenza</th>
+                            <th class="appello-th appello-th-check">Mensa</th>
+                            <th class="appello-th appello-th-riconsegna">Riconsegna</th>
+                        </tr>
+                    </thead>
+                    <tbody id="appelloBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
