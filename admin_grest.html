@@ -134,6 +134,19 @@
                 <input type="file" id="importAttivitaFile" accept=".txt,.csv">
                 <button type="button" onclick="importaAttivitaDaFile()">Importa attività</button>
             </div>
+            <div class="card import-card">
+                <h3>Importa bambini da file</h3>
+                <p class="import-hint">
+                    Carica un file .xlsx, .xls, .csv o .txt con nome, cognome, classe e settimana.
+                    <br>
+                    <code>Nome | Cognome | Classe | Settimana</code>
+                    <br>
+                    <small>La settimana può essere singola (<code>1</code>) o multipla separata da virgola (<code>1,2,3</code>). Valori ammessi: 1, 2, 3, 4, 5.
+                    </small>
+                </p>
+                <input type="file" id="importBambiniFile" accept=".txt,.csv,.tsv,.xls,.xlsx,.xlsm">
+                <button type="button" onclick="importaBambiniDaFile()">Importa bambini</button>
+            </div>
         </div>
         
             <!-- Sezione Gestione Programma Attività -->

@@ -2439,6 +2439,158 @@ async function importaAttivitaDaFile() {
     }
 }
 
+function parseSettimaneBambino(rawValue) {
+    if (rawValue === undefined || rawValue === null) return null;
+
+    const settimaneValide = new Set(['1', '2', '3', '4']);
+
+    const pezzi = String(rawValue)
+        .replace(/["'\[\]{}]/g, ' ')      // rimuove virgolette e parentesi
+        .split(/[\s,;./\\|\-–—]+/)         // separatori comuni
+        .map(s => s.trim())
+        .filter(Boolean);
+
+    const uniche = [...new Set(pezzi)].filter(s => settimaneValide.has(s));
+
+    return uniche.length ? uniche : null;
+}
+
+async function importaBambiniDaFile() {
+    if (!sb) {
+        mostraNotifica('Client Supabase non pronto.', 'error');
+        return;
+    }
+
+    const input = document.getElementById('importBambiniFile');
+    const file = input?.files?.[0];
+    if (!file) {
+        mostraNotifica('Seleziona un file prima di importare.', 'error');
+        return;
+    }
+
+    try {
+        let rows = [];
+        const nomeFile = file.name.toLowerCase();
+
+        // Lettura Excel
+        if (nomeFile.endsWith('.xlsx') || nomeFile.endsWith('.xlsm') || nomeFile.endsWith('.xls')) {
+            if (typeof window.XLSX === 'undefined') {
+                throw new Error('Il parser Excel non è disponibile.');
+            }
+            const buffer = await file.arrayBuffer();
+            const workbook = window.XLSX.read(buffer, { type: 'array' });
+            const sheet = workbook.Sheets[workbook.SheetNames[0]];
+            rows = window.XLSX.utils.sheet_to_json(sheet, {
+                header: 1,
+                blankrows: false,
+                defval: ''
+            });
+        } else {
+            // Lettura CSV / TSV / TXT
+            const testo = await file.text();
+            rows = testo
+                .split(/\r?\n/)
+                .map(riga => riga.split(/\t|,|;/).map(valore => valore.trim()))
+                .filter(riga => riga.some(valore => valore));
+        }
+
+        // Salta eventuale intestazione
+        if (rows.length && rows[0].some(v => /nome|cognome|classe|settimana/i.test(String(v)))) {
+            rows = rows.slice(1);
+        }
+
+        if (!rows.length) {
+            mostraNotifica('Il file non contiene righe valide.', 'error');
+            return;
+        }
+
+        // Bambini già presenti (per evitare duplicati)
+        const { data: esistenti, error: errEsistenti } = await sb
+            .from('bambini')
+            .select('nome, cognome');
+        if (errEsistenti) throw errEsistenti;
+
+        const nomiGiaPresenti = new Set(
+            (esistenti || []).map(b =>
+                `${b.nome || ''} ${b.cognome || ''}`.trim().toLowerCase()
+            )
+        );
+
+        const validi = [];
+        const scartati = [];
+
+        rows.forEach((riga, idx) => {
+            if (!Array.isArray(riga) || riga.length === 0) return;
+
+            const valori = riga.map(v =>
+                v === undefined || v === null ? '' : String(v).trim()
+            );
+            if (valori.every(v => v === '')) return;
+
+            // 👇 Colonne: Nome | Cognome | Classe | Settimana
+            const nome    = valori[0] || '';
+            const cognome = valori[1] || '';
+            const classe  = valori[2] || null;
+            const settTxt = valori[3] || '';
+
+            const settimana = parseSettimaneBambino(settTxt);
+
+            const nomeCompleto = `${nome} ${cognome}`.trim().toLowerCase();
+
+            if (!nome || !cognome) {
+                scartati.push({ riga: idx + 1, motivo: 'nome o cognome mancante', valore: riga });
+                return;
+            }
+            if (nomiGiaPresenti.has(nomeCompleto)) {
+                scartati.push({ riga: idx + 1, motivo: 'già presente', valore: riga });
+                return;
+            }
+
+            validi.push({
+                nome,
+                cognome,
+                classe,
+                settimana   // array tipo ["1","2"] oppure null
+            });
+            nomiGiaPresenti.add(nomeCompleto);
+        });
+
+        if (!validi.length) {
+            const dettaglio = scartati.length
+                ? ` (${scartati.length} righe scartate, vedi console)`
+                : '';
+            console.warn('Righe scartate:', scartati);
+            mostraNotifica(`Nessun nuovo bambino da importare${dettaglio}.`, 'error');
+            return;
+        }
+
+        const { error } = await sb.from('bambini').insert(validi);
+        if (error) throw error;
+
+        input.value = '';
+        if (scartati.length) {
+            console.warn('Righe scartate durante l\'import:', scartati);
+        }
+
+        // Invalida cache dei bambini usata dalla dashboard
+        if (typeof resetCacheBambiniGrest === 'function') {
+            resetCacheBambiniGrest();
+        }
+
+        mostraNotifica(
+            `Importati ${validi.length} bambin${validi.length === 1 ? 'o' : 'i'}` +
+            (scartati.length ? `, ${scartati.length} righe scartate.` : '.'),
+            'success'
+        );
+    } catch (error) {
+        console.error('Errore importazione bambini:', error);
+        mostraNotifica(
+            'Errore durante l\'importazione: ' + (error.message || 'errore sconosciuto'),
+            'error'
+        );
+    }
+}
+
 function formatDateForLookup(date) {
     const p = parseDateValue(date);
     if (!p) return '';
