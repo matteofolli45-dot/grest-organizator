@@ -230,6 +230,9 @@ function showLoginError(message) {
 }
 
 function unlockAdminArea() {
+    
+    document.body.classList.add('admin-active'); 
+
     selectedCalendarDate = new Date(GREST_START); // Default alla prima data GREST
     currentCalendarDate = new Date(selectedCalendarDate.getFullYear(), selectedCalendarDate.getMonth(), 1);
     
@@ -450,6 +453,11 @@ async function mostraAnimatori() {
         return;
     }
 
+    // 🔽 NUOVO: assicura che la cache delle squadre sia caricata PRIMA di renderizzare
+    if (typeof caricaSquadre === 'function' && (!squadreCorrenti || squadreCorrenti.length === 0)) {
+        try { await caricaSquadre(); } catch (e) { console.warn('Squadre non caricate:', e); }
+    }
+
     const isPaginaAdmin = window.location.href.includes('admin') || document.getElementById('adminContent')?.style.display === 'block';
     let weekNumber;
 
@@ -480,6 +488,7 @@ async function mostraAnimatori() {
     tableBody.innerHTML = `<tr><td colspan="5" style="text-align: center;">Caricamento animatori in corso...</td></tr>`;
 
     try {
+        // ✅ Query semplice, senza join (i nomi squadra li risolviamo in JS)
         const { data: animatori, error } = await sb
             .from('animatori')
             .select('*')
@@ -494,17 +503,15 @@ async function mostraAnimatori() {
             return arr.map(String).includes(String(weekNumber));
         });
 
-        // RESETTIAMO LA PAGINA A 1 QUANDO SI CARICANO NUOVI DATI
         paginaCorrenteAnimatori = 1;
-        
-        // CHIAMIAMO LA FUNZIONE UNICA
+
         renderTabellaAnimatori(animatoriCorrenti, isPaginaAdmin);
-        
+
         if (typeof renderRegistroValutazioni === 'function') {
             renderRegistroValutazioni(animatoriCorrenti);
         }
         if (typeof initAssegnazioneSquadre === 'function') {
-        await initAssegnazioneSquadre(animatoriCorrenti);
+            await initAssegnazioneSquadre(animatoriCorrenti);
         }
 
     } catch (err) {
@@ -513,12 +520,40 @@ async function mostraAnimatori() {
     }
 }
 
-function getSquadraLabel(animatore) {
-    const valoreSquadra = animatore && animatore.squadra !== undefined && animatore.squadra !== null && animatore.squadra !== ''
-        ? String(animatore.squadra)
-        : 'Nessuna squadra';
+function getNomeSquadra(animatore) {
+    if (!animatore) return 'Nessuna';
 
-    return valoreSquadra === 'Nessuna squadra' ? 'Nessuna squadra' : `Squadra ${valoreSquadra}`;
+    const squadraId = animatore.squadra;
+    if (squadraId === null || squadraId === undefined || squadraId === '') {
+        return 'Nessuna';
+    }
+
+    // Cerca nella cache delle squadre
+    if (typeof squadreCorrenti !== 'undefined' && Array.isArray(squadreCorrenti) && squadreCorrenti.length > 0) {
+        const sq = squadreCorrenti.find(s =>
+            String(s.id_squadra) === String(squadraId) ||
+            String(s.id) === String(squadraId)
+        );
+        if (sq && sq.nome) return sq.nome;
+    }
+
+    // Fallback: prova con window.SQUADRE (caricato da altri punti dell'app)
+    const listaSquadre = (typeof SQUADRE !== 'undefined' && SQUADRE) || window.SQUADRE || [];
+    if (Array.isArray(listaSquadre) && listaSquadre.length > 0) {
+        const sq = listaSquadre.find(s =>
+            String(s.id_squadra) === String(squadraId) ||
+            String(s.id) === String(squadraId)
+        );
+        if (sq && sq.nome) return sq.nome;
+    }
+
+    // Ultimo fallback: mostra l'ID numerico
+    return String(squadraId);
+}
+
+function getSquadraLabel(animatore) {
+    const nome = getNomeSquadra(animatore);
+    return (nome === 'Nessuna') ? 'Nessuna squadra' : `Squadra ${nome}`;
 }
 
 function raggruppaAnimatoriPerSquadra(lista) {
@@ -866,7 +901,7 @@ function renderTabellaAnimatori(lista, isPaginaAdmin = false) {
 
         gruppo.membri.forEach(animatore => {
             const nomeCompleto = `${animatore.nome || ''} ${animatore.cognome || ''}`.trim();
-            const squadra = animatore.squadra || 'Nessuna';
+            const squadra = getNomeSquadra(animatore);
             const ruolo = getDisplayRole(animatore);
             const presenze = Array.isArray(animatore.settimana)
                 ? animatore.settimana.join(', ')
@@ -3894,10 +3929,30 @@ async function caricaAppello(dataSelezionata) {
 
         appelloAnimatori = tuttiAnimatori.filter(a => {
             if (getAppelloIdSquadra(a) !== idSquadra) return false;
-            if (!a.settimana) return true;
-
-            const settimane = Array.isArray(a.settimana) ? a.settimana : [a.settimana];
-            return settimane.map(String).includes(String(weekNumber));
+                
+            // 1. L'animatore loggato deve SEMPRE comparire,
+            //    anche se la sua settimana non corrisponde a quella attiva
+            const isProprietario = (() => {
+                if (selectedAnimatoreId !== null && selectedAnimatoreId !== undefined && selectedAnimatoreId !== '') {
+                    return String(a.id_animatore) === String(selectedAnimatoreId);
+                }
+                if (selectedAccountId) {
+                    return String(getAccountId(a)) === String(selectedAccountId);
+                }
+                return false;
+            })();
+        
+            if (isProprietario) return true;
+        
+            // 2. Per gli altri: parsing robusto della settimana
+            const settimane = typeof normalizzaSettimane === 'function'
+                ? normalizzaSettimane(a.settimana)
+                : (Array.isArray(a.settimana) ? a.settimana.map(String) : [String(a.settimana || '')]);
+        
+            // Se non ha nessuna settimana valida, mostralo comunque
+            if (!settimane.length || !settimane[0]) return true;
+        
+            return settimane.includes(String(weekNumber));
         });
 
         (statusRes.data || []).forEach(status => {
@@ -4355,4 +4410,348 @@ document.addEventListener('click', event => {
     if (dot && dot.closest('#teamMembersPagination')) {
         cambiaPaginaComponentiSquadra(Number(dot.dataset.page));
     }
+});
+
+//======================================
+// SABATO ORATORIO
+//======================================
+
+let saborIscritti = [];
+let saborIncontroCorrente = null;
+let saborPresenzeMap = {};
+let saborAnimatoriDisponibili = [];
+
+function riempiSelectAnimatoriSabor() {
+    const select = document.getElementById('saborResponsabileAnimatoreSelect');
+    if (!select) return;
+    select.innerHTML = saborAnimatoriDisponibili
+        .map(a => `<option value="${a.id_animatore}">${a.cognome} ${a.nome}</option>`)
+        .join('');
+}
+
+async function caricaSaborAnimatori() {
+    if (!sb) return;
+    const { data, error } = await sb.from('animatori').select('id_animatore, nome, cognome').order('cognome', { ascending: true });
+    if (error) { console.error('Errore caricamento animatori (sabor):', error); return; }
+    saborAnimatoriDisponibili = data || [];
+    riempiSelectAnimatoriSabor();
+}
+
+async function caricaSaborIscritti() {
+    if (!sb) return;
+    const { data, error } = await sb.from('sabor_iscritti').select('*').order('cognome', { ascending: true });
+    if (error) {
+        console.error('Errore caricamento iscritti sabato:', error);
+        if (typeof mostraNotifica === 'function') mostraNotifica('Errore caricamento iscritti.', 'error');
+        return;
+    }
+    saborIscritti = data || [];
+    renderSaborIscrittiTable();
+    await caricaSaborBambiniDisponibili();
+}
+
+async function caricaSaborBambiniDisponibili() {
+    const select = document.getElementById('saborBambinoGrestSelect');
+    if (!select || !sb) return;
+
+    const { data, error } = await sb.from('bambini').select('id_bambini, nome, cognome').order('cognome', { ascending: true });
+    if (error) { console.error('Errore caricamento bambini (sabor):', error); return; }
+
+    const giaIscritti = new Set(
+        saborIscritti.filter(i => i.id_bambino_grest !== null).map(i => String(i.id_bambino_grest))
+    );
+    const disponibili = (data || []).filter(b => !giaIscritti.has(String(b.id_bambini)));
+
+    select.innerHTML = '<option value="">Seleziona un bambino già registrato...</option>' +
+        disponibili.map(b => `<option value="${b.id_bambini}">${b.cognome} ${b.nome}</option>`).join('');
+}
+
+function renderSaborIscrittiTable() {
+    const tbody = document.getElementById('saborIscrittiBody');
+    if (!tbody) return;
+
+    if (saborIscritti.length === 0) {
+        tbody.innerHTML = '<tr class="sabor-empty-row"><td colspan="4">Nessun iscritto ancora.</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = saborIscritti.map(i => {
+        const nomeCompleto = `${i.cognome || ''} ${i.nome || ''}`.trim();
+        const origineBadge = i.id_bambino_grest
+            ? '<span class="sabor-badge sabor-badge-grest">Da GREST</span>'
+            : '<span class="sabor-badge sabor-badge-nuovo">Nuovo</span>';
+        const statoBadge = i.attivo
+            ? '<span class="sabor-badge sabor-badge-attivo">Attivo</span>'
+            : '<span class="sabor-badge sabor-badge-disattivo">Disattivo</span>';
+        const azioneLabel = i.attivo ? 'Disattiva' : 'Riattiva';
+
+        return `
+            <tr class="sabor-row">
+                <td>${nomeCompleto}</td>
+                <td>${origineBadge}</td>
+                <td>${statoBadge}</td>
+                <td>
+                    <button type="button" class="sabor-btn-azione" onclick="toggleSaborIscrittoAttivo(${i.id_iscritto}, ${!i.attivo})">
+                        ${azioneLabel}
+                    </button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+async function toggleSaborIscrittoAttivo(idIscritto, nuovoStato) {
+    if (!sb) return;
+    const { error } = await sb.from('sabor_iscritti').update({ attivo: nuovoStato }).eq('id_iscritto', idIscritto);
+    if (error) {
+        console.error('Errore aggiornamento stato iscritto:', error);
+        if (typeof mostraNotifica === 'function') mostraNotifica('Errore durante l\'aggiornamento.', 'error');
+        return;
+    }
+    if (typeof mostraNotifica === 'function') mostraNotifica('Stato aggiornato.', 'success');
+    await caricaSaborIscritti();
+    if (saborIncontroCorrente) await renderSaborChecklist();
+}
+
+async function aggiungiSaborDaGrest() {
+    const select = document.getElementById('saborBambinoGrestSelect');
+    if (!select || !select.value || !sb) return;
+
+    const bambino = { id_bambini: select.value, nome: select.selectedOptions[0].text.split(' ').slice(1).join(' '), cognome: select.selectedOptions[0].text.split(' ')[0] };
+
+    const { error } = await sb.from('sabor_iscritti').insert({
+        nome: bambino.nome,
+        cognome: bambino.cognome,
+        id_bambino_grest: Number(select.value),
+        attivo: true
+    });
+
+    if (error) {
+        console.error('Errore aggiunta iscritto da GREST:', error);
+        if (typeof mostraNotifica === 'function') mostraNotifica('Errore durante l\'aggiunta.', 'error');
+        return;
+    }
+    select.value = '';
+    if (typeof mostraNotifica === 'function') mostraNotifica('Iscritto aggiunto.', 'success');
+    await caricaSaborIscritti();
+}
+
+async function aggiungiSaborNuovo() {
+    const nomeInput = document.getElementById('saborNuovoNome');
+    const cognomeInput = document.getElementById('saborNuovoCognome');
+    if (!nomeInput || !cognomeInput || !sb) return;
+
+    const nome = nomeInput.value.trim();
+    const cognome = cognomeInput.value.trim();
+    if (!nome || !cognome) {
+        if (typeof mostraNotifica === 'function') mostraNotifica('Inserisci nome e cognome.', 'error');
+        return;
+    }
+
+    const { error } = await sb.from('sabor_iscritti').insert({ nome, cognome, id_bambino_grest: null, attivo: true });
+    if (error) {
+        console.error('Errore aggiunta nuovo iscritto:', error);
+        if (typeof mostraNotifica === 'function') mostraNotifica('Errore durante l\'aggiunta.', 'error');
+        return;
+    }
+    nomeInput.value = ''; cognomeInput.value = '';
+    if (typeof mostraNotifica === 'function') mostraNotifica('Iscritto aggiunto.', 'success');
+    await caricaSaborIscritti();
+}
+
+// --- Incontro del sabato ---
+
+async function caricaSaborIncontro(dataISO) {
+    if (!sb) return;
+    const { data: incontro, error } = await sb.from('sabor_incontri').select('*').eq('data', dataISO).maybeSingle();
+
+    if (error) {
+        console.error('Errore caricamento incontro sabato:', error);
+        if (typeof mostraNotifica === 'function') mostraNotifica('Errore caricamento incontro.', 'error');
+        return;
+    }
+
+    saborIncontroCorrente = incontro || null;
+
+    const formEl = document.getElementById('saborIncontroForm');
+    const dettagliEl = document.getElementById('saborIncontroDettagli');
+
+    if (!saborIncontroCorrente) {
+        formEl.style.display = 'flex';
+        dettagliEl.style.display = 'none';
+        return;
+    }
+
+    formEl.style.display = 'none';
+    dettagliEl.style.display = 'block';
+
+    document.getElementById('saborIncontroTitolo').textContent = saborIncontroCorrente.titolo_attivita;
+    document.getElementById('saborIncontroDescrizione').textContent = saborIncontroCorrente.descrizione || '';
+
+    let nomeResponsabile = saborIncontroCorrente.nome_responsabile || '—';
+    if (saborIncontroCorrente.tipo_responsabile === 'animatore' && saborIncontroCorrente.id_animatore_responsabile) {
+        const a = saborAnimatoriDisponibili.find(x => x.id_animatore === saborIncontroCorrente.id_animatore_responsabile);
+        nomeResponsabile = a ? `${a.cognome} ${a.nome} (animatore)` : 'Animatore';
+    } else if (saborIncontroCorrente.tipo_responsabile === 'catechista') {
+        nomeResponsabile = `${nomeResponsabile} (catechista)`;
+    }
+    document.getElementById('saborIncontroResponsabile').textContent = nomeResponsabile;
+
+    const { data: presenze, error: errPresenze } = await sb
+        .from('sabor_presenze')
+        .select('*')
+        .eq('id_incontro', saborIncontroCorrente.id_incontro);
+
+    if (errPresenze) { console.error('Errore caricamento presenze sabato:', errPresenze); return; }
+
+    saborPresenzeMap = {};
+    (presenze || []).forEach(p => { saborPresenzeMap[p.id_iscritto] = p.presente; });
+
+    renderSaborChecklist();
+}
+
+function renderSaborChecklist() {
+    const tbody = document.getElementById('saborPresenzeBody');
+    if (!tbody) return;
+
+    const attivi = saborIscritti.filter(i => i.attivo);
+
+    if (attivi.length === 0) {
+        tbody.innerHTML = '<tr class="sabor-empty-row"><td colspan="2">Nessun iscritto attivo.</td></tr>';
+        aggiornaSaborContatore(0, 0);
+        return;
+    }
+
+    let presentiCount = 0;
+    tbody.innerHTML = attivi.map(i => {
+        const presente = !!saborPresenzeMap[i.id_iscritto];
+        if (presente) presentiCount++;
+        const nomeCompleto = `${i.cognome || ''} ${i.nome || ''}`.trim();
+        return `
+            <tr class="sabor-row">
+                <td>${nomeCompleto}</td>
+                <td class="sabor-cell-check">
+                    <input type="checkbox" class="sabor-checkbox sabor-check-presenza" data-id="${i.id_iscritto}" ${presente ? 'checked' : ''}>
+                </td>
+            </tr>
+        `;
+    }).join('');
+
+    aggiornaSaborContatore(presentiCount, attivi.length);
+}
+
+function aggiornaSaborContatore(presenti, totale) {
+    const elPresenti = document.getElementById('saborContatorePresenti');
+    const elTotale = document.getElementById('saborContatoreTotale');
+    if (elPresenti) elPresenti.textContent = presenti;
+    if (elTotale) elTotale.textContent = totale;
+}
+
+async function toggleSaborPresenza(idIscritto, presente) {
+    if (!sb || !saborIncontroCorrente) return;
+
+    const { error } = await sb.from('sabor_presenze').upsert({
+        id_incontro: saborIncontroCorrente.id_incontro,
+        id_iscritto: Number(idIscritto),
+        presente
+    }, { onConflict: 'id_incontro,id_iscritto' });
+
+    if (error) {
+        console.error('Errore salvataggio presenza sabato:', error);
+        if (typeof mostraNotifica === 'function') mostraNotifica('Errore durante il salvataggio.', 'error');
+        return;
+    }
+
+    saborPresenzeMap[idIscritto] = presente;
+    const attivi = saborIscritti.filter(i => i.attivo);
+    const presentiCount = attivi.filter(i => saborPresenzeMap[i.id_iscritto]).length;
+    aggiornaSaborContatore(presentiCount, attivi.length);
+}
+
+async function creaSaborIncontro() {
+    if (!sb) return;
+    const dataInput = document.getElementById('saborDataInput');
+    const titolo = document.getElementById('saborTitoloInput').value.trim();
+    const descrizione = document.getElementById('saborDescrizioneInput').value.trim();
+    const tipoResponsabile = document.getElementById('saborTipoResponsabile').value;
+
+    if (!titolo) {
+        if (typeof mostraNotifica === 'function') mostraNotifica('Inserisci il nome dell\'attività.', 'error');
+        return;
+    }
+
+    const payload = {
+        data: dataInput.value,
+        titolo_attivita: titolo,
+        descrizione: descrizione || null,
+        tipo_responsabile: tipoResponsabile,
+        id_animatore_responsabile: null,
+        nome_responsabile: null
+    };
+
+    if (tipoResponsabile === 'animatore') {
+        const sel = document.getElementById('saborResponsabileAnimatoreSelect');
+        if (!sel.value) {
+            if (typeof mostraNotifica === 'function') mostraNotifica('Seleziona un animatore.', 'error');
+            return;
+        }
+        payload.id_animatore_responsabile = Number(sel.value);
+    } else {
+        const nome = document.getElementById('saborResponsabileNomeInput').value.trim();
+        if (!nome) {
+            if (typeof mostraNotifica === 'function') mostraNotifica('Inserisci il nome del catechista.', 'error');
+            return;
+        }
+        payload.nome_responsabile = nome;
+    }
+
+    const { error } = await sb.from('sabor_incontri').insert(payload);
+    if (error) {
+        console.error('Errore creazione incontro sabato:', error);
+        if (typeof mostraNotifica === 'function') mostraNotifica('Errore durante la creazione.', 'error');
+        return;
+    }
+
+    if (typeof mostraNotifica === 'function') mostraNotifica('Incontro creato.', 'success');
+    document.getElementById('saborTitoloInput').value = '';
+    document.getElementById('saborDescrizioneInput').value = '';
+    await caricaSaborIncontro(dataInput.value);
+}
+
+// --- Eventi e init ---
+
+document.addEventListener('change', (e) => {
+    if (e.target.matches('.sabor-check-presenza')) {
+        toggleSaborPresenza(e.target.dataset.id, e.target.checked);
+    }
+    if (e.target.id === 'saborTipoResponsabile') {
+        const isAnimatore = e.target.value === 'animatore';
+        document.getElementById('saborResponsabileAnimatoreRow').style.display = isAnimatore ? 'flex' : 'none';
+        document.getElementById('saborResponsabileNomeRow').style.display = isAnimatore ? 'none' : 'flex';
+    }
+});
+
+document.addEventListener('click', (e) => {
+    if (e.target.matches('.sabor-tab-btn')) {
+        document.querySelectorAll('.sabor-tab-btn').forEach(b => b.classList.remove('active'));
+        e.target.classList.add('active');
+        const tab = e.target.dataset.tab;
+        document.getElementById('saborTabEsistente').style.display = tab === 'esistente' ? 'flex' : 'none';
+        document.getElementById('saborTabNuovo').style.display = tab === 'nuovo' ? 'flex' : 'none';
+    }
+    if (e.target.id === 'saborAggiungiDaGrestBtn') aggiungiSaborDaGrest();
+    if (e.target.id === 'saborAggiungiNuovoBtn') aggiungiSaborNuovo();
+    if (e.target.id === 'saborCreaIncontroBtn') creaSaborIncontro();
+});
+
+document.addEventListener('DOMContentLoaded', async () => {
+    const dataInput = document.getElementById('saborDataInput');
+    if (!dataInput) return; // non siamo sulla pagina sabato_oratorio
+
+    dataInput.value = formattaDataISO(new Date()); // riusa la funzione già definita per l'appello
+    dataInput.addEventListener('change', () => caricaSaborIncontro(dataInput.value));
+
+    await caricaSaborAnimatori();
+    await caricaSaborIscritti();
+    await caricaSaborIncontro(dataInput.value);
 });

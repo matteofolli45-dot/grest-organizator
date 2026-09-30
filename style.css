@@ -34,6 +34,17 @@ body {
   margin: 0;
   position: relative;
 }
+
+/* Quando l'admin è attivo, il body NON centra più:
+   il contenuto scorre normalmente dall'alto come una pagina web */
+body.admin-active {
+  display: block;
+  align-items: initial;
+  justify-content: initial;
+  min-height: auto;
+  padding: 16px;
+}
+
 .btn-top {
     background-color: #d97724;
     color: #ffffff;
@@ -1042,41 +1053,7 @@ input[type="password"]::placeholder {
   }
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    --bg: #fff7ef;
-    --surface: #fff3e0;
-    --surface-strong: #ffd9b8;
-    --accent: #e65800;
-    --accent-dark: #b74300;
-    --text: #2f1f12;
-    --text-muted: #6d3f1a;
-    --border: rgba(181, 75, 0, 0.22);
-    --shadow: 0 18px 45px rgba(148, 65, 10, 0.22);
-  }
 
-  html, body {
-    background: linear-gradient(180deg, #fff7ef 0%, #ffe4c6 100%);
-    color: var(--text);
-  }
-
-  .card, .login-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    box-shadow: var(--shadow);
-  }
-
-  input[type="text"], input[type="password"], select {
-    background: white;
-    color: var(--text);
-    border: 1px solid rgba(163, 93, 30, 0.25);
-  }
-
-  #listaAnimatori li {
-    background: white;
-    border: 1px solid rgba(243, 127, 26, 0.14);
-  }
-}
 /* Layout registro a tutta larghezza */
 .card.full-width {
   grid-column: 1 / -1;
@@ -2343,3 +2320,550 @@ input[type="password"]::placeholder {
 }
 .member-badge-bambino   { background: #ffd54f; color: #5b3a00; }
 .member-badge-animatore { background: #ff6a00; color: #fff; }
+
+
+/* ============================================================
+   ADMIN MOBILE — FIX DEFINITIVO
+   NON tocca mai display/grid-template di .container,
+   altrimenti rompe il display:none inline di #adminContent
+   ============================================================ */
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+html, body {
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+
+/* Quando l'admin è attivo: il body NON centra più verticalmente */
+body.admin-active {
+  display: block;
+  align-items: initial;
+  justify-content: initial;
+  min-height: auto;
+  padding: 16px;
+}
+
+@media (max-width: 900px) {
+
+  /* Griglia container → colonna singola (NON toccare display) */
+  .container,
+  .home-layout {
+    grid-template-columns: 1fr !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 0 !important;
+    margin: 0 auto !important;
+  }
+
+  /* Griglie admin → blocco, ma SOLO quando admin è visibile */
+  body.admin-active .admin-grid,
+  body.admin-active .admin-actions-row,
+  body.admin-active .pool-team-layout,
+  body.admin-active .gestione-layout,
+  body.admin-active .avvisi-grid {
+    display: block !important;
+    grid-template-columns: none !important;
+    gap: 12px !important;
+  }
+
+  /* Card dentro il viewport */
+  body.admin-active .card {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 14px !important;
+    margin: 0 0 12px 0 !important;
+    overflow: hidden;
+  }
+
+  /* Flex children: min-width 0 (fix calendario) */
+  .calendar-selected,
+  .register-header,
+  .weather-header {
+    flex-wrap: wrap !important;
+  }
+  .calendar-selected > *,
+  .register-header > *,
+  .weather-header > * {
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+  .calendar-selected {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 4px !important;
+  }
+
+  /* Calendario compatto */
+  .calendar-table {
+    width: 100% !important;
+    max-width: 100% !important;
+    table-layout: fixed !important;
+  }
+  .calendar-table th,
+  .calendar-table td {
+    padding: 2px 0 !important;
+    font-size: 0.68rem !important;
+    overflow: hidden !important;
+  }
+  .calendar-day {
+    padding: 6px 0 !important;
+    font-size: 0.72rem !important;
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  /* Input: 16px evita lo zoom automatico iOS */
+  input, select, textarea {
+    max-width: 100% !important;
+    font-size: 16px !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Select piscina (aveva margin-left:70px inline) */
+  #piscinaGiorno,
+  .piscinaSquadreSelect {
+    margin-left: 0 !important;
+    width: 100% !important;
+  }
+
+  /* Tabelle → card layout */
+  .animatori-table thead,
+  .registro-table thead { display: none !important; }
+
+  .animatori-table,
+  .registro-table,
+  .animatori-table tbody,
+  .registro-table tbody,
+  .animatori-table tr,
+  .registro-table tr,
+  .animatori-table td,
+  .registro-table td {
+    display: block !important;
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .animatori-table tr,
+  .registro-table tr {
+    margin-bottom: 10px !important;
+    border: 1px solid rgba(255, 140, 26, 0.25) !important;
+    border-radius: 10px !important;
+    padding: 8px !important;
+    overflow: hidden;
+  }
+
+  .animatori-table td,
+  .registro-table td {
+    padding: 8px 0 !important;
+    text-align: right !important;
+    border: none !important;
+    border-bottom: 1px solid rgba(255, 140, 26, 0.1) !important;
+    word-break: break-word;
+  }
+  .animatori-table td:last-child,
+  .registro-table td:last-child { border-bottom: none !important; }
+
+  .registro-table td select,
+  .valutazione-select {
+    width: 100% !important;
+    margin: 0 !important;
+  }
+
+  h1 { font-size: 1.15rem !important; }
+  h3 { font-size: 0.95rem !important; }
+
+  img, video, iframe, svg { max-width: 100%; height: auto; }
+
+  .top-right-menu { top: 8px; right: 8px; }
+  .top-right-menu button {
+    min-width: auto !important;
+    padding: 8px 14px !important;
+  }
+
+  .dettagli-panel,
+  .colonna-lista,
+  .colonna-settimane {
+    width: 100% !important;
+    flex: 1 1 100% !important;
+    min-width: 0 !important;
+  }
+
+  .categoria-item { max-width: 100% !important; }
+}
+
+
+@media (max-width: 900px) {
+
+  /* === TABELLA ADMIN: solo 2 colonne (Nome + Azioni) ===
+     Nasconde l'etichetta "Squadra" sulla cella dei pulsanti. */
+
+  /* La cella dei pulsanti: niente etichetta, padding normale, centrata */
+  body.admin-active .animatori-table td:nth-of-type(2)::before {
+    content: none !important;
+    display: none !important;
+  }
+
+  body.admin-active .animatori-table td:nth-of-type(2) {
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+    text-align: center !important;
+  }
+
+  /* Sicurezza: se per qualche motivo esistono colonne 3 e 4, nascondile */
+  body.admin-active .animatori-table td:nth-of-type(3)::before,
+  body.admin-active .animatori-table td:nth-of-type(4)::before {
+    content: none !important;
+    display: none !important;
+  }
+
+  /* La prima cella (Nome) mantiene la sua etichetta, va bene */
+}
+
+/* ============================================================
+   Tabella "Imposta Squadre Animatori" — mobile
+   Etichetta "Animatore:" a sinistra in colore accent
+   ============================================================ */
+@media (max-width: 900px) {
+
+  /* La cella del nome diventa un flex: label + nome */
+  #assegnazioneSquadreTable td.col-animatore {
+    display: flex !important;
+    align-items: center !important;
+    gap: 10px !important;
+    text-align: left !important;
+    padding: 10px 8px !important;
+    white-space: normal !important;
+    min-width: 0 !important;
+    position: static !important;
+  }
+
+  /* Etichetta "Animatore:" generata via CSS */
+  #assegnazioneSquadreTable td.col-animatore::before {
+    content: "Animatore:" !important;
+    position: static !important;
+    display: inline-block !important;
+    width: auto !important;
+    left: auto !important;
+    top: auto !important;
+    transform: none !important;
+    font-size: 0.72rem !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.05em !important;
+    color: var(--accent) !important;
+    font-weight: 700 !important;
+    flex-shrink: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Il nome (strong) resta allineato subito dopo l'etichetta */
+  #assegnazioneSquadreTable td.col-animatore strong {
+    text-align: left !important;
+    white-space: normal !important;
+    word-break: break-word !important;
+    min-width: 0 !important;
+  }
+
+  /* La cella del nome diventa flex: label + nome sulla stessa riga */
+  #registroValutazioniTable td.col-animatore {
+    display: flex !important;
+    align-items: center !important;
+    gap: 10px !important;
+    text-align: left !important;
+    padding: 10px 8px !important;
+    white-space: normal !important;
+    min-width: 0 !important;
+    position: static !important;
+  }
+
+  /* Etichetta "Animatore:" generata via CSS */
+  #registroValutazioniTable td.col-animatore::before {
+    content: "Animatore:" !important;
+    position: static !important;
+    display: inline-block !important;
+    width: auto !important;
+    left: auto !important;
+    top: auto !important;
+    transform: none !important;
+    font-size: 0.72rem !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.05em !important;
+    color: var(--accent) !important;
+    font-weight: 700 !important;
+    flex-shrink: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  #registroValutazioniTable td.col-animatore strong {
+    text-align: left !important;
+    white-space: normal !important;
+    word-break: break-word !important;
+    min-width: 0 !important;
+  }
+
+  /* Cella della valutazione (colonna col select) */
+  #registroValutazioniTable td:not(.col-animatore) {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 10px !important;
+    text-align: left !important;
+    padding: 10px 8px !important;
+    min-width: 0 !important;
+  }
+
+  /* Etichetta col nome del giorno corrente (Lunedì, Martedì, ecc.) */
+  #registroValutazioniTable td:not(.col-animatore)::before {
+    content: "Valutazione:" !important;
+    position: static !important;
+    display: inline-block !important;
+    width: auto !important;
+    font-size: 0.72rem !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.05em !important;
+    color: var(--accent) !important;
+    font-weight: 700 !important;
+    flex-shrink: 0 !important;
+  }
+
+  #registroValutazioniTable td:not(.col-animatore) .valutazione-select {
+    flex: 1 !important;
+    min-width: 0 !important;
+    max-width: 180px !important;
+  }
+}
+
+/* ============================================================
+   iOS SAFE AREAS — elimina gli "aloni" bianchi sopra e sotto
+   ============================================================ */
+
+html {
+  /* Colore di sfondo anche oltre le safe area (status bar + home indicator) */
+  background-color: #0b0a0b;
+  background-image: radial-gradient(circle at top left, #140f11 0%, #0c090b 58%, #050405 100%);
+  background-attachment: fixed;
+  background-size: cover;
+}
+
+body {
+  /* Colore di sfondo anche sul body per continuità */
+  background-color: #0b0a0b;
+
+  /* Padding dinamico che rispetta le safe area di iOS (notch, home indicator) */
+  padding-top: max(24px, env(safe-area-inset-top));
+  padding-bottom: max(24px, env(safe-area-inset-bottom));
+  padding-left: max(24px, env(safe-area-inset-left));
+  padding-right: max(24px, env(safe-area-inset-right));
+}
+
+/* Su mobile il padding base è più piccolo */
+@media (max-width: 900px) {
+  body {
+    padding-top: max(16px, env(safe-area-inset-top));
+    padding-bottom: max(16px, env(safe-area-inset-bottom));
+    padding-left: max(12px, env(safe-area-inset-left));
+    padding-right: max(12px, env(safe-area-inset-right));
+  }
+}
+
+/* ============================================================
+   APPELLO — layout mobile a card
+   ============================================================ */
+@media (max-width: 900px) {
+
+  .appello-table-wrapper {
+    overflow-x: visible !important;
+    border: none !important;
+  }
+
+  .appello-table thead {
+    display: none !important;
+  }
+
+  .appello-table,
+  .appello-table tbody,
+  .appello-table tr,
+  .appello-table td {
+    display: block !important;
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  /* Ogni riga diventa una card */
+  .appello-table tr.appello-row-bambino,
+  .appello-table tr.appello-row-animatore {
+    margin-bottom: 10px !important;
+    border: 1px solid rgba(255, 140, 26, 0.25) !important;
+    border-radius: 10px !important;
+    padding: 12px !important;
+    background: rgba(23, 20, 22, 0.5) !important;
+  }
+
+  .appello-table td {
+    padding: 6px 0 !important;
+    text-align: left !important;
+    border: none !important;
+  }
+
+  /* Nome in evidenza in alto */
+  .appello-table td.appello-cell-nome {
+    font-size: 1rem !important;
+    font-weight: 700 !important;
+    padding-bottom: 10px !important;
+    margin-bottom: 6px !important;
+    border-bottom: 1px solid rgba(255, 140, 26, 0.15) !important;
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    gap: 8px !important;
+  }
+
+  /* Righe con label + checkbox */
+  .appello-table td.appello-cell-check,
+  .appello-table td.appello-cell-riconsegna {
+    display: flex !important;
+    align-items: center !important;
+    gap: 12px !important;
+    padding: 8px 0 !important;
+  }
+
+  .appello-table td.appello-cell-check::before,
+  .appello-table td.appello-cell-riconsegna::before {
+    font-size: 0.72rem !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.05em !important;
+    color: var(--accent) !important;
+    font-weight: 700 !important;
+    flex-shrink: 0 !important;
+    min-width: 90px !important;
+  }
+
+  /* Presenza (2° td) */
+  .appello-table td.appello-cell-check:nth-child(2)::before {
+    content: "Presenza:" !important;
+  }
+  /* Mensa (3° td) */
+  .appello-table td.appello-cell-check:nth-child(3)::before {
+    content: "Mensa:" !important;
+  }
+  /* Riconsegna (4° td) */
+  .appello-table td.appello-cell-riconsegna::before {
+    content: "Riconsegna:" !important;
+  }
+
+  .appello-checkbox {
+    width: 22px !important;
+    height: 22px !important;
+  }
+
+  .appello-riconsegna-input {
+    flex: 1 !important;
+    max-width: 100% !important;
+    width: auto !important;
+  }
+
+  /* Separatore "Animatori" */
+  .appello-table tr.appello-separator-row td {
+    background: rgba(255, 140, 26, 0.15) !important;
+    padding: 10px 12px !important;
+    border-radius: 8px !important;
+    margin: 16px 0 8px 0 !important;
+    text-align: center !important;
+    border: none !important;
+  }
+
+  /* Riga vuota */
+  .appello-table tr.appello-empty-row td {
+    padding: 20px !important;
+    text-align: center !important;
+    color: #888 !important;
+    border: none !important;
+  }
+}
+
+/* ============================
+   SABATO ORATORIO
+   ============================ */
+
+.sabor-wrapper { margin-top: 20px; }
+
+.sabor-header {
+    display: flex; align-items: center; justify-content: space-between;
+    flex-wrap: wrap; gap: 12px; margin-bottom: 16px;
+}
+.sabor-title { color: #ff9c3d; margin: 0; }
+
+.sabor-day-picker { display: flex; align-items: center; gap: 8px; }
+.sabor-day-label { color: #ddd; font-size: 0.9rem; }
+.sabor-day-input {
+    background: #1c1310; color: #f5f5f5; border: 1px solid #4a372a;
+    border-radius: 8px; padding: 8px 12px; font-size: 0.9rem;
+}
+
+.sabor-empty-msg { color: #999; margin-bottom: 14px; }
+
+.sabor-incontro-form { display: flex; flex-direction: column; gap: 12px; max-width: 420px; }
+.sabor-form-row { display: flex; flex-direction: column; gap: 4px; }
+.sabor-form-row label { color: #ccc; font-size: 0.85rem; }
+.sabor-form-row input, .sabor-form-row textarea, .sabor-form-row select {
+    background: #1c1310; color: #f5f5f5; border: 1px solid #4a372a;
+    border-radius: 6px; padding: 8px 10px; font-size: 0.9rem; font-family: inherit;
+}
+
+.sabor-incontro-info { margin-bottom: 10px; }
+.sabor-incontro-desc { color: #bbb; font-size: 0.9rem; }
+.sabor-incontro-responsabile { color: #ff9c3d; font-size: 0.85rem; }
+
+.sabor-counter {
+    background: rgba(255, 156, 61, 0.08); border: 1px solid #4a372a; border-radius: 8px;
+    padding: 10px 14px; margin-bottom: 14px; font-size: 0.95rem; color: #f5f5f5;
+}
+
+.sabor-table { width: 100%; border-collapse: collapse; background: #140d0a; }
+.sabor-th-nome, .sabor-th-origine, .sabor-th-stato, .sabor-th-azioni {
+    text-align: left; padding: 12px 16px; background: #2c1c12;
+    color: #ff9c3d; font-weight: 600; white-space: nowrap;
+}
+.sabor-th-check, .sabor-th-stato, .sabor-th-azioni { text-align: center; }
+
+.sabor-row { border-top: 1px solid #2a1e16; }
+.sabor-row:hover { background: rgba(255, 156, 61, 0.06); }
+.sabor-row td { padding: 10px 16px; color: #f5f5f5; }
+.sabor-cell-check { text-align: center; }
+.sabor-checkbox { width: 20px; height: 20px; accent-color: #ff9c3d; cursor: pointer; }
+
+.sabor-badge { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 0.75rem; font-weight: 600; }
+.sabor-badge-grest { background: rgba(78, 205, 196, 0.15); color: #4ecdc4; }
+.sabor-badge-nuovo { background: rgba(255, 156, 61, 0.15); color: #ff9c3d; }
+.sabor-badge-attivo { background: rgba(76, 209, 55, 0.15); color: #4cd137; }
+.sabor-badge-disattivo { background: rgba(255, 90, 90, 0.15); color: #ff5a5a; }
+
+.sabor-btn-azione {
+    background: none; border: 1px solid #4a372a; color: #ccc; border-radius: 6px;
+    padding: 4px 10px; font-size: 0.78rem; cursor: pointer;
+}
+.sabor-btn-azione:hover { border-color: #ff9c3d; color: #ff9c3d; }
+
+.sabor-add-box {
+    background: rgba(255,255,255,0.03); border: 1px solid #3a2a20; border-radius: 10px;
+    padding: 14px; margin-bottom: 18px;
+}
+.sabor-add-tabs { display: flex; gap: 8px; margin-bottom: 12px; }
+.sabor-tab-btn {
+    background: none; border: 1px solid #4a372a; color: #ccc; padding: 6px 14px;
+    border-radius: 8px; cursor: pointer; font-size: 0.85rem;
+}
+.sabor-tab-btn.active { border-color: #ff9c3d; color: #ff9c3d; background: rgba(255,156,61,0.08); }
+
+.sabor-tab-panel { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.sabor-tab-panel select, .sabor-tab-panel input {
+    background: #1c1310; color: #f5f5f5; border: 1px solid #4a372a;
+    border-radius: 6px; padding: 8px 10px; font-size: 0.9rem; flex: 1; min-width: 160px;
+}
+
+.sabor-empty-row td { text-align: center; padding: 20px; color: #888; }

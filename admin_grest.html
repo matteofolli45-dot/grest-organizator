@@ -2,7 +2,8 @@
 <html lang="it">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#0b0a0b">
     <title>Grest Organizator - Admin</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.1/dist/xlsx.full.min.js"></script>
@@ -28,7 +29,7 @@
         <h3>Accesso Amministratore</h3>
         <input type="password" id="adminPassword" placeholder="Inserisci password">
         <div class="button-row">
-            <button type="button" onclick="window.location.href='index_grest.html'">Indietro</button>
+            <button type="button" onclick="window.location.href='index.html'">Indietro</button>
             <button type="button" id="loginButton">Accedi</button>
         </div>
         <p id="loginError" class="error-message"></p>
