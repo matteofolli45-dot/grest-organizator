@@ -2867,3 +2867,106 @@ body {
 }
 
 .sabor-empty-row td { text-align: center; padding: 20px; color: #888; }
+
+/* ============================
+   SCELTA PROGETTO (landing)
+   ============================ */
+.scelta-progetto-body {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+}
+.scelta-progetto-container { text-align: center; max-width: 640px; }
+.scelta-progetto-sub { color: #999; margin-bottom: 30px; }
+.scelta-progetto-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+@media (max-width: 600px) {
+    .scelta-progetto-grid { grid-template-columns: 1fr; }
+}
+.scelta-progetto-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding: 32px 20px;
+    border-radius: 16px;
+    text-decoration: none;
+    transition: transform 0.15s ease;
+    border: 1px solid transparent;
+}
+.scelta-progetto-card:hover { transform: translateY(-4px); }
+.scelta-progetto-icon { font-size: 2.2rem; }
+.scelta-progetto-titolo { font-size: 1.2rem; font-weight: 700; }
+.scelta-progetto-desc { font-size: 0.85rem; opacity: 0.85; }
+
+.scelta-progetto-grest { background: #1c1310; border-color: #4a372a; }
+.scelta-progetto-grest .scelta-progetto-titolo { color: #ff9c3d; }
+.scelta-progetto-grest .scelta-progetto-desc { color: #e8d9cc; }
+.scelta-progetto-grest:hover { border-color: #ff9c3d; }
+
+.scelta-progetto-sabor { background: #1e1440; border-color: #4a3a7a; }
+.scelta-progetto-sabor .scelta-progetto-titolo { color: #8b7bf0; }
+.scelta-progetto-sabor .scelta-progetto-desc { color: #d6d0f5; }
+.scelta-progetto-sabor:hover { border-color: #8b7bf0; }
+
+
+/* ============================
+   TEMA SABATO ORATORIO (blu/violetto)
+   Attivato con <body class="sabor-theme"> su sabato_oratorio.html
+   ============================ */
+body.sabor-theme {
+    background: #140b28;
+    --accent: #8b7bf0; /* se style.css usa var(--accent,...) altrove, si aggiorna da qui */
+}
+body.sabor-theme h1 { color: #8b7bf0; }
+body.sabor-theme .card,
+body.sabor-theme .sabor-wrapper {
+    background: #1c1440;
+    border-color: #4a3a7a;
+}
+body.sabor-theme .button { background: #8b7bf0; }
+
+body.sabor-theme .sabor-title,
+body.sabor-theme .sabor-incontro-responsabile,
+body.sabor-theme .sabor-th-nome,
+body.sabor-theme .sabor-th-origine,
+body.sabor-theme .sabor-th-stato,
+body.sabor-theme .sabor-th-azioni { color: #8b7bf0; }
+
+body.sabor-theme .sabor-day-input,
+body.sabor-theme .sabor-form-row input,
+body.sabor-theme .sabor-form-row textarea,
+body.sabor-theme .sabor-form-row select,
+body.sabor-theme .sabor-tab-panel input,
+body.sabor-theme .sabor-tab-panel select {
+    background: #241a4d;
+    border-color: #4a3a7a;
+}
+
+body.sabor-theme .sabor-table { background: #150d2e; }
+body.sabor-theme .sabor-th-nome,
+body.sabor-theme .sabor-th-origine,
+body.sabor-theme .sabor-th-stato,
+body.sabor-theme .sabor-th-azioni { background: #241a4d; }
+body.sabor-theme .sabor-row { border-top-color: #352960; }
+body.sabor-theme .sabor-row:hover { background: rgba(139, 123, 240, 0.08); }
+body.sabor-theme .sabor-checkbox { accent-color: #8b7bf0; }
+
+body.sabor-theme .sabor-counter {
+    background: rgba(139, 123, 240, 0.08);
+    border-color: #4a3a7a;
+}
+body.sabor-theme .sabor-tab-btn.active {
+    border-color: #8b7bf0;
+    color: #8b7bf0;
+    background: rgba(139, 123, 240, 0.08);
+}
+body.sabor-theme .sabor-btn-azione:hover { border-color: #8b7bf0; color: #8b7bf0; }
+body.sabor-theme .sabor-badge-nuovo {
+    background: rgba(139, 123, 240, 0.15);
+    color: #8b7bf0;
+}
