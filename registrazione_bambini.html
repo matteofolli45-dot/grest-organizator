@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#0b0a0b">
+    <title>Grest Organizator - Registrazione bambini</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="child-registration-body">
+
+    <main class="child-registration-page">
+        <header class="child-registration-header">
+            <p class="child-registration-eyebrow">Modulo d'iscrizione GREST <span class="current-year"></span></p>
+            <h1>Registrazione bambino</h1>
+            <p>Inserisci i dati necessari alla corretta organizzazione della settimana.</p>
+        </header>
+
+        <form id="childRegistrationForm" class="card child-registration-card">
+            <div class="child-registration-sections">
+                <section class="child-form-section">
+                    <div class="child-form-section-heading">
+                        <span>1</span>
+                        <div>
+                            <h2>Dati personali</h2>
+                            <p>Inserisci i dati anagrafici del bambino.</p>
+                        </div>
+                    </div>
+                    <div class="child-registration-grid child-identity-grid">
+                        <label>
+                            <span>Nome *</span>
+                            <input type="text" id="childName" required maxlength="100" autocomplete="given-name">
+                        </label>
+
+                        <label>
+                            <span>Cognome *</span>
+                            <input type="text" id="childSurname" required maxlength="100" autocomplete="family-name">
+                        </label>
+
+                        <label>
+                            <span>Classe *</span>
+                            <select id="childClass" required>
+                                <option value="">Seleziona la classe</option>
+                                <option value="1">1</option>
+                                <option value="2">2</option>
+                                <option value="3">3</option>
+                                <option value="4">4</option>
+                                <option value="5">5</option>
+                            </select>
+                        </label>
+                    </div>
+                </section>
+
+                <section class="child-form-section">
+                    <div class="child-form-section-heading">
+                        <span>2</span>
+                        <div>
+                            <h2>Informazioni utili</h2>
+                            <p>Indica capacità, allergie e situazioni da conoscere.</p>
+                        </div>
+                    </div>
+                    <div class="child-registration-grid child-health-grid">
+                        <fieldset class="child-radio-group child-swimming-group">
+                            <legend>Sa nuotare? *</legend>
+                            <div class="child-radio-options">
+                                <label><input type="radio" name="childSwimming" value="true" required> Sì</label>
+                                <label><input type="radio" name="childSwimming" value="false"> No</label>
+                            </div>
+                        </fieldset>
+
+                        <fieldset class="child-radio-group child-allergies-group">
+                            <legend>Allergie? *</legend>
+                            <div class="child-radio-options">
+                                <label><input type="radio" name="childAllergies" value="true" required> Sì</label>
+                                <label><input type="radio" name="childAllergies" value="false" checked> No</label>
+                            </div>
+                        </fieldset>
+
+                        <label id="childAllergyDetailsLabel" class="child-allergy-details" hidden>
+                            <span>Descrivi le allergie *</span>
+                            <textarea id="childAllergyDetails" class="avviso-input" maxlength="2000" rows="3" placeholder="Inserisci alimenti, farmaci o altre allergie"></textarea>
+                        </label>
+
+                        <label class="child-full-width">
+                            <span>Patologie, problemi o indicazioni</span>
+                            <textarea id="childProblems" class="avviso-input" maxlength="4000" rows="4" placeholder="Eventuali patologie, problemi o informazioni utili"></textarea>
+                        </label>
+                    </div>
+                </section>
+            </div>
+
+            <p id="childRegistrationMessage" class="child-registration-message" role="status"></p>
+
+            <div class="button-row">
+                <button type="button" id="cancelChildRegistration" class="child-registration-secondary">Annulla</button>
+                <button type="submit" id="childRegistrationSubmit">Registra bambino</button>
+            </div>
+        </form>
+    </main>
+
+    <script src="app.js"></script>
+</body>
+</html>

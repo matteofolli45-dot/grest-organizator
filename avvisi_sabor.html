@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#140b28">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Oratorio">
+    <link rel="manifest" href="./manifest.webmanifest">
+    <title>Grest Organizator - Avvisi Sabato</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="push-notifications.css">
+    <style>
+        .avvisi-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-top: 15px;
+        }
+
+        @media (max-width: 768px) {
+            .avvisi-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .avviso-item {
+            background: rgba(255, 255, 255, 0.05);
+            border-left: 4px solid var(--accent, #8b7bf0);
+            padding: 10px 14px;
+            margin-bottom: 10px;
+            border-radius: 6px;
+        }
+
+        .avviso-data {
+            font-size: 0.75em;
+            color: #c9bfff;
+            display: block;
+            margin-bottom: 4px;
+        }
+    </style>
+</head>
+<body class="sabor-theme">
+    <div class="container sabor-page-container">
+        <h1>Avvisi Sabato Oratorio <span class="current-year"></span></h1>
+
+        <div class="top-right-menu">
+            <button id="menuToggle" type="button" aria-expanded="false">Menu</button>
+            <div class="top-right-dropdown" id="menuDropdown" aria-hidden="true">
+                <a href="sabato_oratorio.html" class="dropdown-item">Pagina principale</a>
+                <a href="admin_sabor.html" class="dropdown-item">Gestione sabato</a>
+                <a href="scelta_progetto.html" class="dropdown-item">Tipo attività</a>
+            </div>
+        </div>
+
+        <div class="avvisi-grid">
+            <div class="avvisi-col-left">
+                <div class="card" style="margin-bottom: 20px;">
+                    <h3>Avvisi Odierni</h3>
+                    <div id="avvisiOdierniContent">
+                        <p style="color: #999;">Nessun avviso per oggi.</p>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h4>Nuovo Avviso</h4>
+                    <div style="margin-bottom: 12px; font-size: 0.9em; color: #ddd2ff;">
+                        <label for="avvisoAutore">Pubblica come</label>
+                        <select id="avvisoAutore" style="display: block; width: 100%; margin-top: 6px;">
+                            <option value="Animatore">Animatore</option>
+                            <option value="Catechista">Catechista</option>
+                        </select>
+                        <span style="display: block; margin-top: 6px; font-size: 0.8em; color: #aaa;">Per avvisi personali: nome e cognome - avviso</span>
+                    </div>
+                    <textarea id="avvisoInput" placeholder="Scrivi il tuo avviso qui..." style="width: 100%; height: 75px; padding: 10px; margin-bottom: 10px; border-radius: 8px; border: 1px solid #4a3a7a; background: #241a4d; color: #f3efff; font-family: inherit; resize: none;"></textarea>
+                    <button id="refreshButton" type="button" style="background: var(--accent, #8b7bf0); color: white; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; width: 100%;">Invia Avviso</button>
+                </div>
+            </div>
+
+            <div class="avvisi-col-right">
+                <div class="card" style="height: 100%;">
+                    <h3>Storico Avvisi</h3>
+                    <div id="avvisiStoricoContent" style="max-height: 500px; overflow-y: auto; margin-top: 10px;">
+                        <p style="color: #999;">Nessun avviso nel registro.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+    <script src="push-notifications.js"></script>
+</body>
+</html>

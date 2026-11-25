@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#140b28">
+    <title>Gestione Sabato Oratorio</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="sabor-theme sabor-admin-theme">
+    <div class="top-right-menu">
+        <button id="menuToggle" type="button" aria-expanded="false">Menu</button>
+        <div class="top-right-dropdown" id="menuDropdown" aria-hidden="true">
+            <a href="sabato_oratorio.html" class="dropdown-item">Pagina principale</a>
+            <a href="avvisi_sabor.html" class="dropdown-item">Avvisi</a>
+            <a href="scelta_progetto.html" class="dropdown-item">Tipo attività</a>
+        </div>
+    </div>
+
+    <div class="login-card-sabor" id="loginCard">
+        <h3>Accesso Amministratore</h3>
+        <input type="password" id="adminPassword" placeholder="Inserisci password">
+        <div class="button-row">
+            <button type="button" onclick="window.location.href='sabato_oratorio.html'">Indietro</button>
+            <button type="button" id="loginButton">Accedi</button>
+        </div>
+        <p id="loginError" class="error-message"></p>
+    </div>
+
+    <main class="container sabor-admin-container" id="adminContent" style="display:none;">
+        <h1>Gestione Sabato Oratorio <span class="current-year"></span></h1>
+
+        <section class="card sabor-wrapper">
+            <div class="sabor-header">
+                <h2 class="sabor-title" id="saborFormTitle">Nuovo incontro</h2>
+                <label class="sabor-day-picker" for="saborDataInput">
+                    <span class="sabor-day-label">Data</span>
+                    <input type="date" id="saborDataInput" class="sabor-day-input">
+                </label>
+            </div>
+            <div class="sabor-admin-form-grid">
+                <label class="sabor-form-row sabor-admin-wide">
+                    <span>Attività</span>
+                    <input type="text" id="saborTitoloInput" placeholder="Es. Torneo di calcetto">
+                </label>
+                <label class="sabor-form-row sabor-admin-wide">
+                    <span>Descrizione</span>
+                    <textarea id="saborDescrizioneInput" rows="2" style="resize: none;"></textarea>
+                </label>
+                <label class="sabor-form-row">
+                    <span>Tipo responsabile</span>
+                    <select id="saborTipoResponsabile">
+                        <option value="animatore">Animatore</option>
+                        <option value="catechista">Catechista</option>
+                    </select>
+                </label>
+                <label class="sabor-form-row" id="saborResponsabileAnimatoreRow">
+                    <span>Responsabili animatori</span>
+                    <div class="sabor-responsabili-wrapper">
+                        <div id="saborResponsabileAnimatoriList" class="sabor-responsabili-list"></div>
+                        <button type="button" id="saborAddResponsabileBtn" class="sabor-mini-btn">+ Aggiungi altro animatore</button>
+                    </div>
+                </label>
+                <label class="sabor-form-row" id="saborResponsabileNomeRow" style="display:none;">
+                    <span>Nome catechista</span>
+                    <input type="text" id="saborResponsabileNomeInput" placeholder="Nome e cognome">
+                </label>
+            </div>
+            <div class="sabor-form-actions">
+                <button type="button" class="button sabor-primary-action" id="saborCreaIncontroBtn">Crea incontro</button>
+                <button type="button" class="button sabor-secondary-action" id="saborAnnullaModificaBtn" hidden>Annulla modifica</button>
+            </div>
+        </section>
+
+        <section class="card sabor-wrapper">
+            <div class="sabor-header">
+                <h2 class="sabor-title">Attività registrate</h2>
+            </div>
+            <div class="table-wrapper">
+                <table class="sabor-table sabor-admin-table sabor-meetings-table">
+                    <thead>
+                        <tr>
+                            <th class="sabor-th-nome">Data</th>
+                            <th class="sabor-th-nome">Attività</th>
+                            <th class="sabor-th-nome">Responsabile</th>
+                            <th class="sabor-th-azioni">Azioni</th>
+                        </tr>
+                    </thead>
+                    <tbody id="saborIncontriAdminBody"></tbody>
+                </table>
+            </div>
+        </section>
+
+            <section class="card sabor-wrapper" aria-labelledby="saborAdminAvvisiTitle">
+                <div class="sabor-header">
+                    <h2 class="sabor-title" id="saborAdminAvvisiTitle">Avvisi Sabato Oratorio</h2>
+                </div>
+                <label class="sabor-form-row" for="saborAdminAvvisoInput">
+                    <span>Nuovo avviso pubblicato come Admin</span>
+                    <textarea id="saborAdminAvvisoInput" rows="3" placeholder="Scrivi un avviso per il Sabato Oratorio" style="resize: none;"></textarea>
+                </label><br>
+                <button type="button" class="button sabor-primary-action" id="saborAdminAvvisoBtn">Pubblica avviso</button>
+                <div id="saborAdminAvvisiList" aria-live="polite"></div>
+            </section>
+
+    </main>
+
+    <script src="app.js"></script>
+</body>
+</html>

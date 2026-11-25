@@ -48,6 +48,22 @@
         </div>
     </div>
 
+    <div id="childHealthModal" class="modal-overlay" aria-hidden="true">
+        <section class="modal-box child-health-modal" role="dialog" aria-modal="true" aria-labelledby="childHealthTitle">
+            <h2 id="childHealthTitle">Informazioni importanti</h2>
+            <p id="childHealthChildName" class="child-health-name"></p>
+            <div id="childHealthDetails" class="child-health-details" hidden>
+                <h3>Problematica</h3>
+                <p id="childHealthProblem"></p>
+                <h3>Indicazioni per l’assistenza</h3>
+                <p id="childHealthInstructions"></p>
+                <div class="modal-actions">
+                    <button type="button" class="btn-confirm" id="closeChildHealthDetailsBtn">Chiudi</button>
+                </div>
+            </div>
+        </section>
+    </div>
+
     <script src="app.js"></script>
 </body>
 </html>

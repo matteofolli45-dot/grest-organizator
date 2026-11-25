@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#0b0a0b">
+    <title>Grest - Parrocchia Sant'Andrea Corsini</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="grest-welcome-body">
+    <main class="grest-welcome-page">
+        <section class="grest-welcome-card">
+            <div class="grest-welcome-mark" aria-hidden="true">GREST</div>
+
+            <p class="grest-welcome-year">Oratorio estivo 2026</p>
+            <h1>Grest della Parrocchia Sant'Andrea Corsini</h1>
+            <p class="grest-welcome-subtitle">Montevarchi</p>
+
+            <p class="grest-welcome-description">
+                Un'occasione per vivere l'estate insieme: giochi, attività,
+                amicizia e momenti all'Oratorio Sant'Andrea Corsini.
+            </p>
+
+            <div class="grest-welcome-details" aria-label="Informazioni sul Grest">
+                <div>
+                    <span class="grest-detail-label">Luogo</span>
+                    <strong>Oratorio Sant'Andrea Corsini</strong>
+                </div>
+                <div>
+                    <span class="grest-detail-label">Indirizzo</span>
+                    <strong>Viale Giacomo Matteotti 48<br>52025 Montevarchi (AR)</strong>
+                </div>
+                <div>
+                    <span class="grest-detail-label">Attività estive</span>
+                    <strong>Giochi, attività, amicizia e momenti insieme</strong>
+                </div>
+                <div>
+                    <span class="grest-detail-label">Iscrizioni 2026</span>
+                    <strong>L'edizione estiva 2026 è già conclusa</strong>
+                </div>
+            </div>
+
+            <div class="grest-welcome-actions">
+                <a class="grest-welcome-action" href="registrazione_bambini.html">
+                    Compila la registrazione
+                </a>
+            </div>
+
+            <p class="grest-welcome-note">
+                Date e nuove iscrizioni saranno comunicate in vista dell'estate 2027.
+            </p>
+        </section>
+    </main>
+
+    <script>
+        document.querySelectorAll('.current-year').forEach(el => {
+            el.textContent = new Date().getFullYear();
+        });
+    </script>
+</body>
+</html>

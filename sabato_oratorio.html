@@ -4,18 +4,24 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="theme-color" content="#0b0a0b">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Oratorio">
+    <link rel="manifest" href="./manifest.webmanifest">
     <title>Grest Organizator - Sabato Oratorio</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="push-notifications.css">
 </head>
 <body class="sabor-theme">
-    <div class="container">
+    <div class="container sabor-page-container">
         <h1>Sabato Oratorio <span class="current-year"></span></h1>
 
         <div class="top-right-menu">
             <button id="menuToggle" type="button" aria-expanded="false">Menu</button>
             <div class="top-right-dropdown" id="menuDropdown" aria-hidden="true">
                 <a href="scelta_progetto.html" class="dropdown-item">Tipo attività</a>
+                <a href="avvisi_sabor.html" class="dropdown-item">Avvisi</a>
+                <a href="admin_sabor.html" class="dropdown-item">Gestione sabato</a>
             </div>
         </div>
 
@@ -29,32 +35,8 @@
                 </div>
             </div>
 
-            <div id="saborIncontroForm" class="sabor-incontro-form" style="display:none;">
-                <p class="sabor-empty-msg">Nessun incontro registrato per questa data. Crealo per iniziare l'appello.</p>
-                <div class="sabor-form-row">
-                    <label for="saborTitoloInput">Attività</label>
-                    <input type="text" id="saborTitoloInput" placeholder="Es. Torneo di calcetto">
-                </div>
-                <div class="sabor-form-row">
-                    <label for="saborDescrizioneInput">Descrizione (opzionale)</label>
-                    <textarea id="saborDescrizioneInput" rows="2"></textarea>
-                </div>
-                <div class="sabor-form-row">
-                    <label for="saborTipoResponsabile">Responsabile</label>
-                    <select id="saborTipoResponsabile">
-                        <option value="animatore">Animatore</option>
-                        <option value="catechista">Catechista</option>
-                    </select>
-                </div>
-                <div class="sabor-form-row" id="saborResponsabileAnimatoreRow">
-                    <label for="saborResponsabileAnimatoreSelect">Seleziona animatore</label>
-                    <select id="saborResponsabileAnimatoreSelect"></select>
-                </div>
-                <div class="sabor-form-row" id="saborResponsabileNomeRow" style="display:none;">
-                    <label for="saborResponsabileNomeInput">Nome catechista</label>
-                    <input type="text" id="saborResponsabileNomeInput" placeholder="Nome e cognome">
-                </div>
-                <button type="button" class="button" id="saborCreaIncontroBtn">Crea incontro</button>
+            <div id="saborNessunIncontro" class="sabor-empty-state" style="display:none;">
+                <h3>Nessun incontro registrato per questa data.</h3>
             </div>
 
             <div id="saborIncontroDettagli" class="sabor-incontro-dettagli" style="display:none;">
@@ -63,65 +45,88 @@
                     <p id="saborIncontroDescrizione" class="sabor-incontro-desc"></p>
                     <p class="sabor-incontro-responsabile">Responsabile: <span id="saborIncontroResponsabile"></span></p>
                 </div>
-                <div class="sabor-counter">
-                    Presenti oggi: <strong id="saborContatorePresenti">0</strong> / <span id="saborContatoreTotale">0</span>
-                </div>
-                <div class="table-wrapper">
-                    <table class="sabor-table" id="saborPresenzeTable">
-                        <thead>
-                            <tr>
-                                <th class="sabor-th-nome">Cognome e Nome</th>
-                                <th class="sabor-th-check">Presente</th>
-                            </tr>
-                        </thead>
-                        <tbody id="saborPresenzeBody"></tbody>
-                    </table>
+                <section class="sabor-merenda-panel" aria-labelledby="saborMerendaTitle">
+                    <h2 id="saborMerendaTitle">Bambini e merenda</h2>
+                    <div class="sabor-total-box" aria-live="polite">
+                        <span>Totale bambini</span>
+                        <strong id="saborTotaleBambini">0</strong>
+                    </div>
+                    <fieldset class="sabor-class-accounts">
+                        <legend>Conteggio per classe</legend>
+                        <div class="sabor-count-grid">
+                            <label class="sabor-form-row" for="saborBambiniClasse1">
+                                <span>1ª elementare</span>
+                                <input type="number" id="saborBambiniClasse1" data-sabor-field="bambini_classe_1" min="0" step="1" value="0">
+                            </label>
+                            <label class="sabor-form-row" for="saborBambiniClasse2">
+                                <span>2ª elementare</span>
+                                <input type="number" id="saborBambiniClasse2" data-sabor-field="bambini_classe_2" min="0" step="1" value="0">
+                            </label>
+                            <label class="sabor-form-row" for="saborBambiniClasse3">
+                                <span>3ª elementare</span>
+                                <input type="number" id="saborBambiniClasse3" data-sabor-field="bambini_classe_3" min="0" step="1" value="0">
+                            </label>
+                            <label class="sabor-form-row" for="saborBambiniClasse4">
+                                <span>4ª elementare</span>
+                                <input type="number" id="saborBambiniClasse4" data-sabor-field="bambini_classe_4" min="0" step="1" value="0">
+                            </label>
+                            <label class="sabor-form-row" for="saborBambiniClasse5">
+                                <span>5ª elementare</span>
+                                <input type="number" id="saborBambiniClasse5" data-sabor-field="bambini_classe_5" min="0" step="1" value="0">
+                            </label>
+                        </div>
+                    </fieldset>
+                    <div class="sabor-count-grid">
+                        <label class="sabor-form-row" for="saborNumeroCeliaci">
+                            <span>Bambini celiaci</span>
+                            <input type="number" id="saborNumeroCeliaci" data-sabor-field="numero_celiaci" min="0" step="1" value="0">
+                        </label>
+                        <label class="sabor-form-row" for="saborNumeroIntolleranti">
+                            <span>Bambini intolleranti</span>
+                            <input type="number" id="saborNumeroIntolleranti" data-sabor-field="numero_intolleranti" min="0" step="1" value="0">
+                        </label>
+                    </div>
+                    <label class="sabor-form-row" for="saborIntolleranze">
+                        <span>Intolleranze: a cosa?</span>
+                        <textarea id="saborIntolleranze" data-sabor-field="intolleranze" rows="2" placeholder="Es. lattosio, frutta a guscio"></textarea>
+                    </label>
+                    <label class="sabor-form-row" for="saborProblematicheMerenda">
+                        <span>Altre problematiche per la merenda</span>
+                        <textarea id="saborProblematicheMerenda" data-sabor-field="problematiche_merenda" rows="2"></textarea>
+                    </label>
+                    <fieldset class="sabor-snack-fieldset">
+                        <legend>Merenda prevista</legend>
+                        <div class="sabor-snack-options">
+                            <label><input type="checkbox" name="saborMerenda" data-sabor-field="merende" value="Dolci"> Dolci</label>
+                            <label><input type="checkbox" name="saborMerenda" data-sabor-field="merende" value="Pane e Nutella"> Pane e Nutella</label>
+                            <label><input type="checkbox" name="saborMerenda" data-sabor-field="merende" value="Pane e marmellata"> Pane e marmellata</label>
+                            <label><input type="checkbox" name="saborMerenda" data-sabor-field="merende" value="Pane e olio"> Pane e olio</label>
+                            <label><input type="checkbox" name="saborMerenda" data-sabor-field="merende" value="Crackers"> Crackers</label>
+                            <label><input type="checkbox" name="saborMerenda" data-sabor-field="merende" value="Succhi di frutta"> Succhi di frutta</label>
+                            <label><input type="checkbox" name="saborMerenda" data-sabor-field="merende" value="Estathé"> Estathé</label>
+                            <label><input type="checkbox" name="saborMerenda" data-sabor-field="merende" value="Biscotti vari"> Biscotti vari</label>
+                        </div>
+                    </fieldset>
+                    <div class="sabor-save-row">
+                        <span id="saborMerendaStato" role="status" aria-live="polite"></span>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <!-- ===== GESTIONE ISCRITTI ===== -->
-        <div class="card sabor-wrapper">
-            <div class="sabor-header">
-                <h3 class="sabor-title">Iscritti Sabato Oratorio</h3>
+        <section class="card weather-card sabor-weather-card" aria-labelledby="saborWeatherTitle">
+            <div class="weather-header">
+                <h2 id="saborWeatherTitle">Meteo del sabato</h2>
+                <span class="weather-location">📍 Montevarchi</span>
             </div>
-
-            <div class="sabor-add-box">
-                <div class="sabor-add-tabs">
-                    <button type="button" class="sabor-tab-btn active" data-tab="esistente">Da GREST</button>
-                    <button type="button" class="sabor-tab-btn" data-tab="nuovo">Nuova iscrizione</button>
-                </div>
-
-                <div id="saborTabEsistente" class="sabor-tab-panel">
-                    <select id="saborBambinoGrestSelect">
-                        <option value="">Seleziona un bambino già registrato...</option>
-                    </select>
-                    <button type="button" class="button" id="saborAggiungiDaGrestBtn">Aggiungi</button>
-                </div>
-
-                <div id="saborTabNuovo" class="sabor-tab-panel" style="display:none;">
-                    <input type="text" id="saborNuovoNome" placeholder="Nome">
-                    <input type="text" id="saborNuovoCognome" placeholder="Cognome">
-                    <button type="button" class="button" id="saborAggiungiNuovoBtn">Aggiungi</button>
-                </div>
+            <div class="weather-forecast sabor-weather-forecast" id="saborWeatherForecast" aria-live="polite">
+                <p class="weather-forecast-message">Caricamento previsioni...</p>
             </div>
+        </section>
 
-            <div class="table-wrapper">
-                <table class="sabor-table" id="saborIscrittiTable">
-                    <thead>
-                        <tr>
-                            <th class="sabor-th-nome">Cognome e Nome</th>
-                            <th class="sabor-th-origine">Origine</th>
-                            <th class="sabor-th-stato">Stato</th>
-                            <th class="sabor-th-azioni">Azioni</th>
-                        </tr>
-                    </thead>
-                    <tbody id="saborIscrittiBody"></tbody>
-                </table>
-            </div>
-        </div>
     </div>
 
     <script src="app.js"></script>
+    <script src="push-notifications.js"></script>
 </body>
 </html>

@@ -147,6 +147,16 @@
                 </p>
                 <input type="file" id="importBambiniFile" accept=".txt,.csv,.tsv,.xls,.xlsx,.xlsm">
                 <button type="button" onclick="importaBambiniDaFile()">Importa bambini</button>
+                <button type="button" id="manageChildFlagsBtn">Gestione stelline</button>
+             </div>
+             <div class="card import-card">
+                <h3>Registrazioni ricevute dal modulo</h3>
+                <p class="import-hint">
+                    Visualizza le richieste inviate dal modulo pubblico e approvale quando sono pronte per l'inserimento nel Grest.
+                </p>
+                <p id="registrazioniBambiniCount" class="registrazioni-bambini-count">Caricamento registrazioni...</p>
+                <button type="button" onclick="apriRegistrazioniBambiniModal()">Gestisci registrazioni</button>
+                <button type="button" onclick="scaricaRegistrazioniBambini()">Scarica registrazioni CSV</button>
             </div>
         </div>
         
@@ -292,7 +302,7 @@
         </div>
         </div>
 
-            <!-- Card Meteo del Giorno -->
+            <!-- Meteo e previsioni dei prossimi giorni -->
         <div class="card weather-card" style="width: 100%; margin-top: 20px;">
             <div class="weather-header">
                 <h3>Meteo Oggi</h3>
@@ -308,6 +318,10 @@
                     </div>
                 </div>
                 <p class="weather-desc" id="weatherDesc">Caricamento previsioni...</p>
+            </div>
+            <h4 class="weather-forecast-title">Previsioni prossimi giorni</h4>
+            <div class="weather-forecast" id="weatherForecast" aria-label="Previsioni meteo dei prossimi giorni">
+                <p class="weather-forecast-message">Caricamento previsioni...</p>
             </div>
         </div>
 
@@ -371,7 +385,8 @@
             <!-- Form Inserimento Avviso Admin -->
             <div style="margin-bottom: 20px; padding: 15px; background: rgba(0,0,0,0.05); border-radius: 8px;">
                 <label for="adminAvvisoInput"><strong>Inserisci nuovo avviso:</strong></label>
-                <textarea id="adminAvvisoInput" placeholder="Scrivi il tuo avviso qui..." style="width: 100%; min-height: 80px; padding: 10px; margin: 10px 0;border-radius: 4px; border: 1px solid #ccc; font-family: inherit; resize: none; box-sizing: border-box;"></textarea>
+                <textarea id="adminAvvisoInput" placeholder="Scrivi il tuo avviso qui..." 
+                class="avviso-input" style="width: 100%; min-height: 80px; padding: 10px; margin: 10px 0; border-radius: 12px; border: 1px solid rgba(255, 140, 26, 0.28); background: #100d0e; color: var(--text); font-family: inherit; resize: none; box-sizing: border-box;"></textarea>
                 <button onclick="salvaAvvisoAdmin()" type="button" style="background: var(--accent, #4ecdc4); color: white; padding: 8px 20px; border: none;border-radius: 4px; cursor: pointer; font-weight: bold;">Pubblica Avviso</button>
             </div>
         
@@ -383,6 +398,56 @@
                 </div>
             </div>
         </div>
+    </div>
+
+    <div id="registrazioniBambiniModal" class="modal-backdrop hidden" aria-hidden="true">
+        <section class="modal-card registrazioni-bambini-modal" role="dialog" aria-modal="true" aria-labelledby="registrazioniBambiniTitle">
+            <div class="modal-header">
+                <div>
+                    <h2 id="registrazioniBambiniTitle">Registrazioni in attesa</h2>
+                    <p class="modal-subtitle"><span id="registrazioniBambiniModalCount">0</span> richieste</p>
+                </div>
+                <button type="button" class="modal-close-2" onclick="chiudiRegistrazioniBambiniModal()" aria-label="Chiudi">✖</button>
+            </div>
+
+            <div class="registrazioni-bambini-toolbar">
+                <label class="registrazioni-bambini-select-all">
+                    <input type="checkbox" id="registrazioniSelectAll">
+                    Seleziona tutti
+                </label>
+                <div class="registrazioni-bambini-bulk-actions">
+                    <button type="button" class="registrazioni-approve-all" onclick="approvaTutteRegistrazioniBambini()">Approva tutti</button>
+                    <button type="button" class="registrazioni-reject-all" onclick="rifiutaTutteRegistrazioniBambini()">Rifiuta tutti</button>
+                </div>
+            </div>
+
+            <div id="registrazioniBambiniList" class="registrazioni-bambini-list" aria-live="polite">
+                <p>Caricamento registrazioni...</p>
+            </div>
+
+            <div class="modal-actions">
+                <button type="button" class="secondary-btn" onclick="rifiutaRegistrazioniSelezionate()">Rifiuta selezionati</button>
+                <button type="button" onclick="approvaRegistrazioniSelezionate()">Approva selezionati</button>
+            </div>
+        </section>
+    </div>
+
+    <div id="childFlagsModal" class="modal-backdrop hidden" aria-hidden="true">
+        <section class="modal-card child-flags-modal" role="dialog" aria-modal="true" aria-labelledby="childFlagsTitle">
+            <div class="modal-header">
+                <div>
+                    <h2 id="childFlagsTitle">Stelline e informazioni importanti</h2>
+                    <p class="modal-subtitle"><span id="childFlagsTotal">0</span> bambini in elenco</p>
+                </div>
+                <button type="button" class="modal-close-2" id="closeChildFlagsBtn" aria-label="Chiudi">✖</button>
+            </div>
+            <p class="child-flags-warning">Attiva la stellina per aggiungere una nota utile all’assistenza. Le informazioni saranno visibili a chi usa l’app: inserisci solo ciò che serve.</p>
+            <div id="childFlagsList" class="child-flags-list" aria-live="polite"></div>
+            <div class="modal-actions">
+                <button type="button" class="secondary-btn" id="cancelChildFlagsBtn">Annulla</button>
+                <button type="button" id="saveChildFlagsBtn">Salva modifiche</button>
+            </div>
+        </section>
     </div>
 
     <div id="editAnimatorModal" class="modal-backdrop hidden" aria-hidden="true">

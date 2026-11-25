@@ -4,39 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="theme-color" content="#0b0a0b">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Grest">
+    <link rel="manifest" href="./manifest.webmanifest">
     <title>Grest Organizator - Avvisi</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link rel="stylesheet" href="style.css">
-    <style>
-        /* Layout Grid Affiancato (Come da bozza) */
-        .avvisi-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-            margin-top: 15px;
-        }
-
-        @media (max-width: 768px) {
-            .avvisi-grid {
-                grid-template-columns: 1fr; /* Responsivo su mobile */
-            }
-        }
-
-        .avviso-item {
-            background: rgba(255, 255, 255, 0.05);
-            border-left: 4px solid var(--accent, #4ecdc4);
-            padding: 10px 14px;
-            margin-bottom: 10px;
-            border-radius: 4px;
-        }
-
-        .avviso-data {
-            font-size: 0.75em;
-            color: #888;
-            display: block;
-            margin-bottom: 4px;
-        }
-    </style>
+    <link rel="stylesheet" href="push-notifications.css">
 </head>
 <body>
     <div class="container">
@@ -57,29 +31,29 @@
         
         <!-- COLONNA SINISTRA -->
         <div class="avvisi-col-left">
-            <div class="card" style="margin-bottom: 20px;">
+            <div class="card avvisi-card avvisi-today-card">
                 <h3>Avvisi Odierni</h3>
                 <div id="avvisiOdierniContent">
-                    <p style="color: #999;">Nessun avviso per oggi.</p>
+                    <p class="avvisi-empty">Nessun avviso per oggi.</p>
                 </div>
             </div>
 
-            <div class="card">
-                <h4>Nuovo Avviso</h4>
-                <div style="margin-bottom: 12px; font-size: 0.9em; color: #555;">
-                    Pubblichi come: <strong id="autoreDisplay" style="color: var(--accent, #4ecdc4);">Caricamento...</strong>
+            <div class="card avvisi-card avvisi-form-card">
+                <h3>Nuovo Avviso</h3>
+                <div class="avviso-author-line">
+                    Pubblichi come: <strong id="autoreDisplay" class="avviso-autore">Caricamento...</strong>
                 </div>
-                <textarea id="avvisoInput" placeholder="Scrivi il tuo avviso qui..." style="width: 100%; height: 75px; padding: 10px; margin-bottom: 10px; border-radius: 4px; border: 1px solid #ccc; font-family: inherit; resize: none;"></textarea>
-                <button id="refreshButton" type="button" style="background: var(--accent, #4ecdc4); color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; width: 100%;">Invia Avviso</button>
+                <textarea id="avvisoInput" class="avviso-input" placeholder="Scrivi il tuo avviso qui..."></textarea>
+                <button id="refreshButton" class="avviso-submit" type="button" ">Invia Avviso</button>
             </div>
         </div>
 
         <!-- COLONNA DESTRA -->
         <div class="avvisi-col-right">
-            <div class="card" style="height: 100%;">
+            <div class="card avvisi-card avvisi-history-card">
                 <h3>Storico Avvisi</h3>
-                <div id="avvisiStoricoContent" style="max-height: 500px; overflow-y: auto; margin-top: 10px;">
-                    <p style="color: #999;">Nessun avviso nel registro.</p>
+                <div id="avvisiStoricoContent" class="avvisi-history-content">
+                    <p class="avvisi-empty">Nessun avviso nel registro.</p>
                 </div>
             </div>
         </div>
@@ -88,5 +62,6 @@
     </div>
 
     <script src="app.js"></script>
+    <script src="push-notifications.js"></script>
 </body>
 </html>

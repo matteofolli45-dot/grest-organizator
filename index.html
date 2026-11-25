@@ -4,13 +4,36 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="theme-color" content="#0b0a0b">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Grest">
+    <link rel="manifest" href="./manifest.webmanifest">
     <title>Grest Organizator - Pagina Principale</title>
+    <script>
+        try {
+            if (localStorage.getItem('grest_guida_iniziale_letta') !== '1') {
+                window.location.replace('guida_iniziale.html');
+            }
+        } catch (error) {
+            console.warn('Memoria del browser non disponibile: apertura diretta della pagina principale.', error);
+        }
+    </script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="push-notifications.css">
 </head>
 <body>
 
-    <div class="container">
+    <section class="grest-launch-screen" id="grestLaunchScreen" role="dialog" aria-modal="true" aria-labelledby="grestLaunchTitle" hidden>
+        <div class="grest-launch-card">
+            <p class="grest-launch-label">GREST ORGANIZATOR</p>
+            <h2 id="grestLaunchTitle">Progetto in fase di lavorazione</h2>
+            <p>Questa parte del progetto è ancora in fase di lavorazione. Se al momento non riesci a visualizzare alcune informazioni o funzionalità, è perché non hai ancora accesso al tuo account.</p>
+            <p>L’account e la relativa password ti verranno consegnati non appena il progetto sarà completato e reso disponibile.</p>
+            <button type="button" class="grest-launch-continue" id="grestLaunchContinue">Ho capito, continua</button>
+        </div>
+    </section>
+
+    <div class="container" id="grestHomeApp">
         
         <h1>Gestione GREST <span class="current-year"></span></h1>
 
@@ -104,7 +127,7 @@
 
                         <div class="form-group">
                             <label for="inputNuovaPassword">Nuova Password</label>
-                            <input type="password" id="inputNuovaPassword" placeholder="Inserisci nuova password" required minlength="4">
+                            <input type="password" id="inputNuovaPassword" placeholder="Inserisci nuova password" required minlength="6">
                         </div>
 
                         <div id="msgCambioPassword" class="msg-box"></div>
@@ -140,5 +163,22 @@
     </div>
 
     <script src="app.js"></script>
+    <script>
+        if (new URLSearchParams(window.location.search).get('from') === 'scelta_progetto') {
+            const launchScreen = document.getElementById('grestLaunchScreen');
+            const app = document.getElementById('grestHomeApp');
+            launchScreen.hidden = false;
+            app.inert = true;
+            app.setAttribute('aria-hidden', 'true');
+            document.getElementById('grestLaunchContinue').addEventListener('click', () => {
+                launchScreen.hidden = true;
+                app.inert = false;
+                app.removeAttribute('aria-hidden');
+                const menuToggle = app.querySelector('#menuToggle');
+                if (menuToggle) menuToggle.focus();
+            });
+        }
+    </script>
+    <script src="push-notifications.js"></script>
 </body>
 </html>

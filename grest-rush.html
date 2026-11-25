@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#0b0a0b">
 <link rel="stylesheet" href="style.css">
 <title>METRO RUSH</title>
-<script src="app.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
  
@@ -49,6 +49,10 @@ body {
   pointer-events: none; letter-spacing: 0.5px;
 }
 #hud-ability { color: #f4d35e; }
+#hud-coins {
+  position: absolute; top: 12px; left: 0;
+  color: #ffd700; font-size: 7px; white-space: nowrap;
+}
  
 .overlay {
   position: absolute; inset: 0;
@@ -82,6 +86,10 @@ body {
  
 /* --- character select --- */
 .char-select { display: flex; flex-direction: column; align-items: center; gap: 7px; width: 100%; }
+.rush-profile { color: #4ecdc4; font-size: 7px; line-height: 1.8; }
+.rush-lock { color: #ffd700; font-size: 7px; line-height: 1.8; }
+.rush-account-link { color: #4ecdc4; font-size: 7px; line-height: 1.8; }
+.game-wrap [hidden] { display: none !important; }
 .char-nav { display: flex; align-items: center; justify-content: center; gap: 10px; }
 .nav-btn {
   font-family: inherit; font-size: 13px; background: #22223b; color: #f4d35e;
@@ -101,33 +109,6 @@ body {
   background: #14141f;
 }
  
-.reset-link {
-  font-size: 6px; color: #6b6b80; background: none; border: none;
-  text-decoration: underline; cursor: pointer; font-family: inherit; padding: 2px;
-}
- 
-/* --- icon editor --- */
-#editor-canvas {
-  width: min(72vw, 224px);
-  height: auto;
-  image-rendering: pixelated;
-  border: 2px solid #3d3d5c;
-  touch-action: none;
-  background: #14141f;
-}
-.tool-row { display: flex; gap: 8px; }
-.tool-btn {
-  font-family: inherit; font-size: 7px; padding: 6px 10px;
-  background: #22223b; color: #c9c9d9; border: 2px solid #3d3d5c; cursor: pointer;
-}
-.tool-btn.selected { border-color: #f4d35e; color: #f4d35e; }
- 
-.swatch-row { display: flex; gap: 5px; flex-wrap: wrap; justify-content: center; max-width: 230px; }
-.swatch { width: 16px; height: 16px; border: 2px solid transparent; cursor: pointer; padding: 0; }
-.swatch.selected { border-color: #f4f1de; }
- 
-.color-picker-row { display: flex; align-items: center; gap: 6px; font-size: 6.5px; color: #9b9bb0; }
-#editor-custom-color { width: 28px; height: 20px; border: none; padding: 0; background: none; cursor: pointer; }
 </style>
 </head>
 <body>
@@ -151,10 +132,13 @@ body {
       <span id="hud-score">0</span>
       <span id="hud-ability"></span>
       <span id="hud-best">MIGLIOR 0</span>
+      <span id="hud-coins">MONETE 0 | TOT 0</span>
     </div>
  
     <div id="select-overlay" class="overlay compact">
       <div class="title small">METRO RUSH</div>
+      <div id="rush-profile-label" class="rush-profile">Caricamento profilo...</div>
+      <a id="rush-account-link" class="rush-account-link" href="selezione_account.html" hidden>Seleziona account animatore</a>
  
       <div class="char-select">
         <div class="char-nav">
@@ -168,56 +152,32 @@ body {
         <canvas id="char-icon" width="140" height="180"></canvas>
  
         <div class="ability-desc" id="char-ability-desc">—</div>
+        <div id="character-lock-info" class="rush-lock" hidden></div>
  
-        <button id="edit-icon-btn" class="reset-link" type="button">✎ personalizza icona</button>
       </div>
  
       <div class="controls-hint">← → CAMBIA CORSIA &nbsp; ↑ SALTA &nbsp; ↓ SCIVOLA</div>
-      <button id="start-btn" class="pixel-btn">GIOCA</button>
+      <button id="unlock-char-btn" class="pixel-btn" type="button" hidden>Sblocca personaggio</button>
+      <button id="start-btn" class="pixel-btn" hidden>GIOCA</button>
     </div>
  
     <div id="gameover-overlay" class="overlay hidden">
       <div class="title small">FINE CORSA</div>
       <div class="stat">PUNTI <span id="final-score">0</span></div>
       <div class="stat">MIGLIOR <span id="final-best">0</span></div>
+      <div class="stat">MONETE CORSA <span id="final-coins">0</span></div>
+      <div class="stat">MONETE TOTALI <span id="final-total-coins">0</span></div>
       <div class="gameover-btns">
         <button id="restart-btn" class="pixel-btn">RIPROVA</button>
         <button id="change-char-btn" class="pixel-btn secondary">PERSONAGGI</button>
       </div>
     </div>
  
-    <div id="icon-editor-overlay" class="overlay compact hidden">
-      <div class="title small">ICONA — <span id="editor-char-name"></span></div>
- 
-      <canvas id="editor-canvas" width="224" height="288"></canvas>
- 
-      <div class="tool-row">
-        <button id="tool-pencil" class="tool-btn selected" type="button">MATITA</button>
-        <button id="tool-eraser" class="tool-btn" type="button">GOMMA</button>
-      </div>
- 
-      <div class="swatch-row" id="editor-palette"></div>
- 
-      <div class="color-picker-row">
-        <span>PERSONALIZZATO</span>
-        <input type="color" id="editor-custom-color" value="#4ecdc4">
-      </div>
- 
-      <div class="editor-actions">
-        <button id="editor-reset-btn" class="reset-link" type="button">predefinita</button>
-        <button id="editor-clear-btn" class="reset-link" type="button">svuota tutto</button>
-      </div>
- 
-      <div class="gameover-btns">
-        <button id="editor-save-btn" class="pixel-btn">SALVA</button>
-        <button id="editor-cancel-btn" class="pixel-btn secondary">ANNULLA</button>
-      </div>
-    </div>
   </div>
-  <div class="footer-hint">scegli il tuo corridore e disegna la sua icona</div>
+  <div class="footer-hint">scegli il tuo corridore e usa le icone predefinite</div>
 </div>
-</body>
-    <script>
+<script src="app.js"></script>
+<script>
       (function(){
   const canvas = document.getElementById('game');
   const ctx = canvas.getContext('2d');
@@ -240,29 +200,40 @@ body {
   // ---------- characters ----------
   const CHARACTERS = [
     {
-      id: 'runner', name: 'IL CORRIDORE', ability: 'none', abilityName: 'EQUILIBRATO',
+      id: 'runner', name: 'CASH CASH', ability: 'none', abilityName: 'EQUILIBRATO',
+      price: 0,
       abilityDesc: 'Nessun potere speciale: solido e affidabile per iniziare.',
       baseColors: { jacket: '#c77dff', hair: '#2b2d42', skin: '#ffcc99' }
     },
     {
-      id: 'jumper', name: 'GIOVANNI BECATTINI', ability: 'doubleJump', abilityName: 'GRAN SALTO',
-      abilityDesc: 'Salta il doppio più in alto per scavalcare qualsiasi ostacolo!',
-      baseColors: { jacket: '#ff6b6b', hair: '#1a1a2e', skin: '#ffd8a8' }
+      id: 'magnet', name: 'MATTIA MELA', ability: 'magnet', abilityName: 'ATTIRA-MONETE',
+      price: 125,
+      abilityDesc: 'Ruba monete anche dalle corsie accanto alla tua.',
+      baseColors: { jacket: '#4ecdc4', hair: '#22223b', skin: '#ffe0ac' }
     },
     {
       id: 'tank', name: 'DON CARLO', ability: 'shield', abilityName: 'SCUDO',
+      price: 750,
       abilityDesc: 'Assorbe un colpo permettendogli di continuare la corsa (grazie gesù). Si ricarica ad ogni partenza.',
       baseColors: { jacket: '#ffd166', hair: '#3d2c5e', skin: '#f4a259' }
     },
     {
-      id: 'magnet', name: 'MATTIA MELA', ability: 'magnet', abilityName: 'ATTIRA-MONETE',
-      abilityDesc: 'Ruba monete anche dalle corsie accanto alla tua.',
-      baseColors: { jacket: '#4ecdc4', hair: '#22223b', skin: '#ffe0ac' }
+      id: 'jumper', name: 'GIOVANNI BECATTINI', ability: 'doubleJump', abilityName: 'GRAN SALTO',
+      price: 999,
+      abilityDesc: 'Salta il doppio più in alto per scavalcare qualsiasi ostacolo!',
+      baseColors: { jacket: '#ff6b6b', hair: '#1a1a2e', skin: '#ffd8a8' }
     }
   ];
  
   let selectedIndex = 0;
   function currentCharacter(){ return CHARACTERS[selectedIndex]; }
+  let rushAnimator = null;
+  let unlockedCharacters = new Set(['runner']);
+  let walletCoins = 0;
+  let pendingCoinAdds = 0;
+  let rushProfileReady = false;
+  let coinSaveTimer = null;
+  let coinFlushPromise = null;
  
   let state = 'menu';
   let score = 0, highScore = 0, coinsCollected = 0;
@@ -287,15 +258,14 @@ body {
  
   // ---------- icon editor ----------
   const GRID_COLS = 28, GRID_ROWS = 36;
-  const EDITOR_PALETTE = ['#ffffff','#f4f1de','#ffd700','#ff9f1c','#e63946','#ff6b6b','#c77dff',
-    '#4ecdc4','#06d6a0','#118ab2','#3d2c5e','#22223b','#2b2d42','#8d5524','#ffcc99','#000000'];
- 
   // Incolla qui il testo copiato dalla console tra gli apici ' '
 const SAVED_GIOVANNI_JSON = '[[null,null,null,null,null,null,null,"#e63946","#e63946","#f4f1de","#f4f1de","#f4f1de","#f4f1de","#f4f1de","#e63946","#e63946","#e63946","#e63946","#e63946",null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,"#e63946","#f4f1de","#f4f1de","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#f4f1de","#f4f1de","#e63946","#e63946","#e63946","#e63946",null,null,null,null,null,null,null,null],[null,null,null,null,null,"#e63946","#f4f1de","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#f4f1de","#f4f1de","#e63946","#e63946","#e63946","#e63946",null,null,null,null,null,null],[null,null,null,null,"#e63946","#e63946","#f4f1de","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#f4f1de","#e63946","#e63946","#e63946","#e63946","#e63946",null,null,null,null,null],[null,null,null,"#e63946","#e63946","#f4f1de","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#f4f1de","#e63946","#e63946","#e63946","#e63946","#e63946",null,null,null,null],[null,null,"#e63946","#e63946","#f4f1de","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#f4f1de","#e63946","#e63946","#e63946","#e63946","#e63946",null,null,null,null],[null,null,"#e63946","#f4f1de","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#f4f1de","#e63946","#e63946","#e63946","#e63946",null,null,null,null],[null,"#e63946","#e63946","#f4f1de","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#f4f1de","#f4f1de","#e63946","#e63946","#e63946","#e63946",null,null,null],[null,"#e63946","#f4f1de","#ffd700","#ffd700","#ffd700","#ffd700","#8d5524","#8d5524","#ffcc99","#8d5524","#8d5524","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#f4f1de","#e63946","#e63946","#e63946","#e63946",null,null,null],[null,"#e63946","#f4f1de","#ffd700","#ffd700","#8d5524","#8d5524","#8d5524","#8d5524","#ffcc99","#8d5524","#8d5524","#8d5524","#8d5524","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#f4f1de","#e63946","#e63946","#e63946","#e63946",null,null,null],[null,"#e63946","#f4f1de","#ffd700","#ffd700","#8d5524","#ffcc99","#ffcc99","#8d5524","#8d5524","#ffcc99","#ffcc99","#ffcc99","#8d5524","#8d5524","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#f4f1de","#e63946","#e63946","#e63946","#e63946",null,null,null],[null,"#e63946","#f4f1de","#ffd700","#8d5524","#8d5524","#ffcc99","#ffcc99","#ffcc99","#8d5524","#ffcc99","#ffcc99","#8d5524","#8d5524","#8d5524","#8d5524","#ffd700","#ffd700","#ffd700","#ffd700","#f4f1de","#e63946","#e63946","#e63946",null,null,null,null],[null,"#e63946","#8d5524","#000000","#000000","#000000","#000000","#000000","#000000","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#8d5524","#ffcc99","#ffcc99","#ffcc99",null,null,null],[null,null,"#ffcc99","#000000","#f4f1de","#f4f1de","#508e8d","#508e8d","#000000","#000000","#ffcc99","#ffcc99","#ffcc99","#000000","#f4f1de","#f4f1de","#508e8d","#508e8d","#508e8d","#f4f1de","#000000","#ffcc99","#8d5524","#8d5524","#ffcc99",null,null,null],[null,null,"#ffcc99","#000000","#f4f1de","#f4f1de","#508e8d","#f4f1de","#2b2d42","#000000","#ffcc99","#ffcc99","#ffcc99","#000000","#f4f1de","#f4f1de","#508e8d","#f4f1de","#2b2d42","#f4f1de","#000000","#ffcc99","#8d5524","#ffcc99","#ffcc99","#ffcc99",null,null],[null,null,"#ffcc99","#000000","#000000","#f4f1de","#508e8d","#2b2d42","#2b2d42","#000000","#8d5524","#ffcc99","#ffcc99","#000000","#000000","#f4f1de","#508e8d","#2b2d42","#2b2d42","#f4f1de","#000000","#ffcc99","#8d5524","#8d5524","#ffcc99","#ffcc99",null,null],[null,null,null,"#ffcc99","#000000","#000000","#000000","#000000","#000000","#000000","#8d5524","#ffcc99","#ffcc99","#ffcc99","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#ffcc99","#8d5524","#8d5524","#ffcc99",null,null,null],[null,null,null,"#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#8d5524","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99",null,null,null],[null,null,null,"#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#8d5524","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99",null,null,null,null],[null,null,null,null,"#ffcc99","#ffcc99","#ffcc99","#ffcc99","#8d5524","#ffcc99","#ffcc99","#ffcc99","#8d5524","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99",null,null,null,null],[null,null,null,null,"#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#8d5524","#8d5524","#8d5524","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99",null,null,null,null,null,null],[null,null,null,null,"#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#f4f1de","#f4f1de","#000000","#ffcc99","#ffcc99","#ffcc99",null,null,null,null,null,null],[null,null,null,null,null,"#ffcc99","#ffcc99","#ffcc99","#000000","#f4f1de","#f4f1de","#f4f1de","#f4f1de","#f4f1de","#f4f1de","#f4f1de","#f4f1de","#000000","#ffcc99","#ffcc99","#ffcc99",null,null,null,null,null,null,null],[null,null,null,null,null,"#ffcc99","#ffcc99","#ffcc99","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#ffcc99","#ffcc99","#ffcc99",null,null,null,null,null,null,null,null],[null,null,null,null,null,null,"#ffcc99","#ffcc99","#ffcc99","#f4f1de","#f4f1de","#000000","#000000","#000000","#000000","#f4f1de","#f4f1de","#ffcc99","#ffcc99","#ffcc99",null,null,null,null,null,null,null,null],[null,null,null,null,null,null,"#ffcc99","#ffcc99","#ffcc99","#ffcc99","#f4f1de","#f4f1de","#f4f1de","#f4f1de","#f4f1de","#f4f1de","#ffcc99","#ffcc99","#ffcc99","#c77dff",null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,"#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#c77dff","#c77dff",null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,"#c77dff","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#c77dff","#c77dff","#c77dff","#c77dff",null,null,null,null,null,null,null],[null,null,null,null,null,null,"#c77dff","#c77dff","#c77dff","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff",null,null,null,null,null,null],[null,"#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff",null,null],["#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff",null],["#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff"],["#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff"],["#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff"],["#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff"],["#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff","#c77dff"]]';
 
 const SAVED_MELA_JSON = '[[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,"#8d5524","#8d5524","#8d5524","#8d5524","#8d5524","#8d5524",null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,"#8d5524","#8d5524","#8d5524","#8d5524","#8d5524","#8d5524","#ffd700","#ff9f1c","#ff9f1c","#8d5524","#8d5524","#8d5524",null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,"#8d5524","#8d5524","#ffd700","#ffd700","#ff9f1c","#8d5524","#ffd700","#ff9f1c","#ffd700","#ff9f1c","#8d5524","#ff9f1c","#8d5524","#8d5524","#8d5524",null,null,null,null,null,null,null],[null,null,null,null,null,"#8d5524","#8d5524","#ffd700","#8d5524","#8d5524","#ffd700","#8d5524","#ffd700","#ff9f1c","#ffd700","#ffd700","#8d5524","#ffd700","#ff9f1c","#8d5524","#8d5524","#8d5524",null,null,null,null,null,null],[null,null,null,null,"#8d5524","#8d5524","#ffd700","#8d5524","#8d5524","#8d5524","#ff9f1c","#8d5524","#ffd700","#8d5524","#8d5524","#ffd700","#ff9f1c","#ffd700","#ffd700","#ffd700","#ff9f1c","#ff9f1c","#8d5524",null,null,null,null,null],[null,null,null,null,"#8d5524","#8d5524","#ffd700","#8d5524","#ffd700","#8d5524","#ff9f1c","#8d5524","#ffd700","#8d5524","#ffd700","#ffd700","#ffd700","#8d5524","#ff9f1c","#ffd700","#ffd700","#ff9f1c","#8d5524","#8d5524",null,null,null,null],[null,null,null,"#8d5524","#8d5524","#ffd700","#8d5524","#8d5524","#ff9f1c","#ff9f1c","#8d5524","#8d5524","#8d5524","#8d5524","#8d5524","#ffd700","#ff9f1c","#8d5524","#8d5524","#ff9f1c","#ffd700","#ffd700","#ff9f1c","#8d5524",null,null,null,null],[null,null,null,"#8d5524","#ff9f1c","#ffd700","#8d5524","#8d5524","#ff9f1c","#ff9f1c","#8d5524","#ffd700","#8d5524","#ff9f1c","#8d5524","#8d5524","#ff9f1c","#8d5524","#ffd700","#ff9f1c","#8d5524","#ffd700","#ff9f1c","#8d5524",null,null,null,null],[null,null,"#8d5524","#8d5524","#8d5524","#8d5524","#8d5524","#8d5524","#ff9f1c","#8d5524","#8d5524","#ffd700","#8d5524","#ff9f1c","#ff9f1c","#ff9f1c","#ff9f1c","#8d5524","#ffd700","#ff9f1c","#8d5524","#8d5524","#ffd700","#8d5524",null,null,null,null],[null,null,"#8d5524","#8d5524","#ffcc99","#8d5524","#8d5524","#8d5524","#8d5524","#8d5524","#8d5524","#ffcc99","#8d5524","#8d5524","#8d5524","#8d5524","#8d5524","#ffcc99","#8d5524","#8d5524","#8d5524","#8d5524","#8d5524","#8d5524",null,null,null,null],[null,null,"#8d5524","#8d5524","#ffcc99","#22223b","#22223b","#22223b","#22223b","#22223b","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#22223b","#22223b","#22223b","#22223b","#ffcc99","#ffcc99","#8d5524","#8d5524",null,null,null,null,null],[null,null,null,"#ffcc99","#22223b","#22223b","#f4f1de","#8d5524","#8d5524","#22223b","#22223b","#ffcc99","#ffcc99","#ffcc99","#22223b","#f4f1de","#8d5524","#8d5524","#8d5524","#22223b","#ffcc99","#ffcc99","#8d5524","#8d5524","#8d5524",null,null,null],[null,null,null,"#ffcc99","#22223b","#f4f1de","#8d5524","#f4f1de","#000000","#000000","#8d5524","#22223b","#ffcc99","#22223b","#f4f1de","#8d5524","#f4f1de","#000000","#000000","#8d5524","#22223b","#8d5524","#ffcc99","#ffcc99","#ffcc99","#8d5524",null,null],[null,null,null,"#ffcc99","#22223b","#f4f1de","#8d5524","#000000","#000000","#000000","#8d5524","#22223b","#8d5524","#22223b","#f4f1de","#8d5524","#000000","#000000","#000000","#8d5524","#22223b","#ffcc99","#8d5524","#8d5524","#ffcc99","#8d5524",null,null],[null,null,null,"#ffcc99","#22223b","#f4f1de","#8d5524","#000000","#000000","#000000","#8d5524","#22223b","#8d5524","#22223b","#f4f1de","#8d5524","#000000","#000000","#000000","#8d5524","#22223b","#8d5524","#8d5524","#ffcc99","#ffcc99","#ffcc99","#8d5524",null],[null,null,null,"#ffcc99","#22223b","#f4f1de","#f4f1de","#8d5524","#8d5524","#8d5524","#22223b","#8d5524","#ffcc99","#ffcc99","#22223b","#f4f1de","#8d5524","#8d5524","#8d5524","#f4f1de","#22223b","#8d5524","#ffcc99","#8d5524","#ffcc99","#ffcc99","#8d5524",null],[null,null,null,"#ffcc99","#ffcc99","#22223b","#22223b","#22223b","#22223b","#22223b","#8d5524","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#22223b","#22223b","#22223b","#22223b","#22223b","#ffcc99","#8d5524","#8d5524","#8d5524","#ffcc99","#8d5524","#8d5524",null],[null,null,null,"#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#8d5524","#ffcc99","#ffcc99","#ffcc99","#8d5524","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#8d5524",null,null],[null,null,null,"#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#8d5524","#8d5524","#8d5524","#8d5524","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#8d5524",null,null,null],[null,null,null,"#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#000000","#ffcc99","#ffcc99","#ffcc99","#8d5524","#8d5524","#8d5524",null,null,null],[null,null,null,null,"#ffcc99","#ffcc99","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#ffcc99","#ffcc99","#ffcc99",null,null,null,null,null],[null,null,null,null,"#ffcc99","#ffcc99","#000000","#000000","#f4f1de","#f4f1de","#f4f1de","#f4f1de","#f4f1de","#f4f1de","#f4f1de","#f4f1de","#f4f1de","#f4f1de","#000000","#ffcc99","#000000","#000000","#ffcc99",null,null,null,null,null],[null,null,null,null,null,"#ffcc99","#ffcc99","#000000","#000000","#f4f1de","#f4f1de","#f4f1de","#000000","#f4f1de","#f4f1de","#f4f1de","#000000","#000000","#ffcc99","#ffcc99","#ffcc99","#ffcc99",null,null,null,null,null,null],[null,null,null,null,null,"#ffcc99","#ffcc99","#ffcc99","#000000","#f4f1de","#f4f1de","#f4f1de","#000000","#f4f1de","#f4f1de","#f4f1de","#000000","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#8d5524",null,null,null,null,null,null],[null,null,null,null,null,null,"#ffcc99","#ffcc99","#ffcc99","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#8d5524",null,null,null,null,null,null],[null,null,null,null,null,null,null,"#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#8d5524","#ffcc99",null,null,null,null,null,null],[null,null,null,null,null,null,null,null,"#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#8d5524","#8d5524","#ffcc99","#ffcc99","#000000","#118ab2","#118ab2","#118ab2","#118ab2",null],[null,null,null,null,null,null,null,null,null,"#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#8d5524","#8d5524","#ffcc99","#ffcc99","#ffcc99","#000000","#118ab2","#118ab2","#118ab2","#118ab2","#118ab2","#118ab2"],[null,null,null,null,null,null,null,null,null,null,null,null,null,"#8d5524","#8d5524","#8d5524","#ffcc99","#ffcc99","#ffcc99","#000000","#000000","#118ab2","#118ab2","#f4f1de","#f4f1de","#f4f1de","#f4f1de","#118ab2"],[null,null,null,null,null,null,null,null,null,null,null,"#118ab2","#118ab2","#000000","#000000","#000000","#000000","#000000","#000000","#118ab2","#118ab2","#f4f1de","#f4f1de","#118ab2","#118ab2","#118ab2","#118ab2","#f4f1de"],[null,null,null,null,null,null,null,null,null,null,"#118ab2","#118ab2","#118ab2","#118ab2","#118ab2","#118ab2","#118ab2","#118ab2","#118ab2","#118ab2","#f4f1de","#118ab2","#f4f1de","#118ab2","#118ab2","#118ab2","#f4f1de","#118ab2"],[null,null,null,null,null,null,null,null,null,"#118ab2","#118ab2","#118ab2","#118ab2","#118ab2","#118ab2","#118ab2","#118ab2","#118ab2","#118ab2","#118ab2","#f4f1de","#118ab2","#f4f1de","#f4f1de","#f4f1de","#118ab2","#f4f1de","#118ab2"],[null,null,null,null,null,null,null,null,null,"#118ab2","#118ab2","#118ab2","#118ab2","#118ab2","#118ab2","#118ab2","#118ab2","#118ab2","#118ab2","#f4f1de","#f4f1de","#118ab2","#f4f1de","#118ab2","#f4f1de","#118ab2","#f4f1de","#118ab2"],[null,null,null,null,null,null,null,null,"#118ab2","#118ab2","#118ab2","#118ab2","#118ab2","#118ab2","#118ab2","#118ab2","#118ab2","#118ab2","#118ab2","#f4f1de","#118ab2","#118ab2","#f4f1de","#118ab2","#f4f1de","#f4f1de","#f4f1de","#118ab2"]]';
 
 const SAVED_DON_JSON = '[[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,"#f4f1de","#f4f1de","#2b2d42","#f4f1de","#2b2d42","#f4f1de","#f4f1de","#2b2d42","#2b2d42",null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,"#f4f1de","#2b2d42","#2b2d42","#f4f1de","#2b2d42","#f4f1de","#2b2d42","#f4f1de","#2b2d42","#f4f1de","#f4f1de","#f4f1de","#2b2d42","#f4f1de",null,null,null,null,null,null,null],[null,null,null,null,null,null,"#f4f1de","#f4f1de","#2b2d42","#2b2d42","#2b2d42","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#2b2d42","#2b2d42","#2b2d42","#f4f1de",null,null,null,null,null,null,null],[null,null,null,null,null,"#2b2d42","#2b2d42","#2b2d42","#f4f1de","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#f4f1de","#2b2d42","#2b2d42",null,null,null,null,null,null],[null,null,null,null,"#f4f1de","#f4f1de","#f4f1de","#2b2d42","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#2b2d42","#2b2d42","#f4f1de","#f4f1de",null,null,null,null,null],[null,null,null,null,"#2b2d42","#2b2d42","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#2b2d42","#2b2d42","#2b2d42",null,null,null,null,null],[null,null,null,"#f4f1de","#2b2d42","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#f4f1de","#f4f1de",null,null,null,null],[null,null,null,"#f4f1de","#f4f1de","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#f4f1de","#2b2d42",null,null,null,null],[null,null,null,"#f4f1de","#2b2d42","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#2b2d42","#000000","#ffcc99",null,null,null],[null,null,null,"#2b2d42","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#000000","#f4f1de","#ffcc99","#ffcc99",null,null],[null,null,null,"#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#2b2d42","#f4f1de","#8d5524","#ffcc99",null,null],[null,null,null,"#f4f1de","#ffffff","#ffffff","#ffffff","#70a1f0","#70a1f0","#70a1f0","#f4f1de","#f4f1de","#000000","#f4f1de","#f4f1de","#ffffff","#ffffff","#ffffff","#70a1f0","#70a1f0","#70a1f0","#f4f1de","#2b2d42","#2b2d42","#ffcc99","#ffcc99",null,null],[null,null,null,"#f4f1de","#ffffff","#ffffff","#ffffff","#70a1f0","#ffffff","#000000","#f4f1de","#000000","#8d5524","#000000","#f4f1de","#ffffff","#ffffff","#ffffff","#70a1f0","#ffffff","#000000","#f4f1de","#ffcc99","#8d5524","#8d5524","#ffcc99",null,null],[null,null,null,"#f4f1de","#f4f1de","#ffffff","#ffffff","#70a1f0","#000000","#000000","#f4f1de","#000000","#8d5524","#000000","#f4f1de","#f4f1de","#ffffff","#ffffff","#70a1f0","#000000","#000000","#ffcc99","#ffcc99","#8d5524","#8d5524","#ffcc99",null,null],[null,null,null,"#ffcc99","#ffcc99","#f4f1de","#f4f1de","#f4f1de","#f4f1de","#ffcc99","#ffcc99","#8d5524","#ffcc99","#ffcc99","#ffcc99","#f4f1de","#f4f1de","#f4f1de","#f4f1de","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99",null,null,null],[null,null,null,"#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#8d5524","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99",null,null,null],[null,null,null,null,"#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#8d5524","#8d5524","#ffcc99","#8d5524","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99",null,null,null,null,null],[null,null,null,null,"#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#8d5524","#8d5524","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99",null,null,null,null,null,null],[null,null,null,null,"#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#000000","#ffcc99","#ffcc99","#ffcc99","#ffcc99",null,null,null,null,null,null],[null,null,null,null,null,"#ffcc99","#ffcc99","#000000","#ffffff","#ffffff","#f4f1de","#f4f1de","#ffffff","#ffffff","#f4f1de","#f4f1de","#000000","#000000","#000000","#ffcc99","#ffcc99",null,null,null,null,null,null,null],[null,null,null,null,null,null,"#ffcc99","#ffcc99","#000000","#000000","#f4f1de","#f4f1de","#ffffff","#ffffff","#f4f1de","#000000","#000000","#ffcc99","#ffcc99","#ffcc99","#ffcc99",null,null,null,null,null,null,null],[null,null,null,null,null,null,null,"#ffcc99","#ffcc99","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#ffcc99","#ffcc99","#ffcc99","#ffcc99",null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,"#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#8d5524",null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,"#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#8d5524","#ffcc99",null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,"#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#8d5524","#8d5524","#ffcc99","#ffcc99",null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null,"#8d5524","#8d5524","#8d5524","#8d5524","#8d5524","#8d5524","#ffcc99","#ffcc99","#ffcc99","#000000","#000000","#000000",null,null,null,null,null,null],[null,null,null,null,null,"#000000","#000000","#000000","#000000","#000000","#000000","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000",null,null],[null,null,null,"#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#ffcc99","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000",null],[null,null,null,"#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#ffffff","#ffffff","#ffffff","#ffffff","#ffffff","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000"],[null,null,null,"#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#ffffff","#ffffff","#ffffff","#ffffff","#ffffff","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000"],[null,null,"#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000"],[null,null,"#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000"],[null,null,"#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000"]]';
+
+const SAVED_CASH_JSON = '[["#ffffff","#ffffff","#ffffff","#ffffff","#000000","#000000","#ffffff","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#ffffff"],["#ffffff","#ffffff","#000000","#ffffff","#000000","#ffffff","#ffffff","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000"],["#ffffff","#ffffff","#000000","#ffffff","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000"],["#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#ffffff"],["#ffffff","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000"],["#ffffff","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#ffffff"],["#ffffff","#ffffff","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#ffffff","#000000","#ffffff"],["#ffffff","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#311906","#000000","#000000","#000000","#000000","#311906","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#ffffff","#000000","#ffffff"],["#ffffff","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#311906","#311906","#311906","#000000","#311906","#311906","#000000","#311906","#311906","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#000000","#ffffff","#000000","#ffffff"],["#ffffff","#ffffff","#000000","#ffffff","#000000","#000000","#000000","#311906","#2f1808","#2f1808","#2f1808","#000000","#311906","#311906","#000000","#2f1808","#000000","#000000","#311906","#000000","#000000","#000000","#000000","#000000","#000000","#ffffff","#000000","#ffffff"],["#ffffff","#ffffff","#000000","#ffffff","#000000","#000000","#000000","#2f1808","#2f1808","#2f1808","#2f1808","#000000","#311906","#000000","#000000","#000000","#000000","#2f1808","#2f1808","#000000","#000000","#000000","#000000","#ffffff","#000000","#ffffff","#000000","#ffffff"],["#ffffff","#ffffff","#000000","#ffffff","#000000","#000000","#000000","#311906","#2f1808","#2f1808","#311906","#000000","#331a09","#311906","#311906","#000000","#311906","#311906","#311906","#311906","#311906","#000000","#000000","#ffffff","#ffffff","#ffffff","#ffffff","#ffffff"],["#ffffff","#ffffff","#000000","#ffffff","#000000","#311906","#000000","#ffffff","#ffffff","#ffffff","#331a09","#000000","#331a09","#311906","#311906","#000000","#ffffff","#ffffff","#ffffff","#311906","#311906","#2f1808","#000000","#341a09","#341a09","#ffffff","#ffffff","#ffffff"],["#ffffff","#ffffff","#ffffff","#ffffff","#000000","#311906","#000000","#000000","#ffffff","#ffffff","#ffffff","#000000","#331a09","#311906","#ffffff","#000000","#ffffff","#ffffff","#ffffff","#ffffff","#311906","#000000","#2f1808","#341a09","#341a09","#341a09","#ffffff","#ffffff"],["#ffffff","#ffffff","#ffffff","#ffffff","#311906","#ffffff","#ffffff","#ffffff","#f4f1de","#000000","#000000","#000000","#331a09","#311906","#ffffff","#000000","#ffffff","#f4f1de","#000000","#000000","#311906","#000000","#2f1808","#000000","#000000","#341a09","#ffffff","#ffffff"],["#ffffff","#ffffff","#ffffff","#ffffff","#311906","#ffffff","#ffffff","#ffffff","#000000","#000000","#000000","#000000","#331a09","#311906","#ffffff","#ffffff","#ffffff","#000000","#000000","#000000","#2f1808","#000000","#2f1808","#000000","#341a09","#341a09","#ffffff","#ffffff"],["#ffffff","#ffffff","#ffffff","#ffffff","#311906","#311906","#ffffff","#ffffff","#000000","#000000","#8d5524","#8d5524","#311906","#311906","#311906","#ffffff","#ffffff","#000000","#000000","#311906","#2f1808","#311906","#2f1808","#000000","#000000","#341a09","#ffffff","#ffffff"],["#ffffff","#ffffff","#ffffff","#ffffff","#311906","#311906","#311906","#311906","#311906","#311906","#8d5524","#311906","#311906","#311906","#8d5524","#311906","#311906","#311906","#311906","#311906","#2f1808","#311906","#2f1808","#000000","#000000","#341a09","#ffffff","#ffffff"],["#ffffff","#ffffff","#ffffff","#ffffff","#311906","#311906","#311906","#311906","#311906","#8d5524","#2f1808","#311906","#311906","#311906","#311906","#8d5524","#311906","#311906","#311906","#311906","#2f1808","#311906","#2f1808","#341a09","#341a09","#341a09","#ffffff","#ffffff"],["#ffffff","#ffffff","#ffffff","#ffffff","#311906","#311906","#311906","#311906","#311906","#8d5524","#331a09","#8d5524","#8d5524","#8d5524","#311906","#8d5524","#311906","#311906","#311906","#311906","#2f1808","#311906","#31190a","#341a09","#341a09","#ffffff","#ffffff","#ffffff"],["#ffffff","#ffffff","#ffffff","#ffffff","#311906","#311906","#311906","#311906","#311906","#31190a","#8d5524","#8d5524","#31190a","#8d5524","#8d5524","#31190a","#311906","#311906","#311906","#311906","#311906","#311906","#31190a","#341a09","#341a09","#ffffff","#ffffff","#ffffff"],["#ffffff","#ffffff","#ffffff","#ffffff","#311906","#311906","#311906","#311906","#311906","#311906","#31190a","#31190a","#31190a","#31190a","#31190a","#311906","#2f1808","#311906","#311906","#311906","#311906","#31190a","#31190a","#ffffff","#ffffff","#ffffff","#ffffff","#ffffff"],["#ffffff","#ffffff","#ffffff","#ffffff","#ffffff","#311906","#311906","#311906","#311906","#8d5524","#8d5524","#8d5524","#8d5524","#8d5524","#8d5524","#311906","#2f1808","#2f1808","#311906","#2f1808","#311906","#31190a","#ffffff","#ffffff","#ffffff","#ffffff","#ffffff","#ffffff"],["#ffffff","#ffffff","#ffffff","#ffffff","#ffffff","#2f1808","#311906","#311906","#8d5524","#000000","#000000","#000000","#000000","#000000","#000000","#8d5524","#2f1808","#2f1808","#2f1808","#311906","#2f1808","#31190a","#ffffff","#ffffff","#ffffff","#ffffff","#ffffff","#ffffff"],["#ffffff","#ffffff","#ffffff","#ffffff","#ffffff","#ffffff","#311906","#311906","#311906","#8d5524","#8d5524","#8d5524","#8d5524","#8d5524","#8d5524","#2f1808","#2f1808","#311906","#311906","#2f1808","#2f1808","#ffffff","#ffffff","#ffffff","#ffffff","#ffffff","#ffffff","#ffffff"],["#ffffff","#ffffff","#ffffff","#ffffff","#ffffff","#ffffff","#ffffff","#2f1808","#311906","#311906","#8d5524","#8d5524","#8d5524","#8d5524","#2f1808","#2f1808","#311906","#311906","#2f1808","#2f1808","#ffffff","#ffffff","#ffffff","#ffffff","#ffffff","#ffffff","#ffffff","#ffffff"],["#ffffff","#ffffff","#ffffff","#ffffff","#ffffff","#ffffff","#ffffff","#ffffff","#2f1808","#311906","#2f1808","#331a09","#331a09","#2f1808","#2f1808","#311906","#311906","#2f1808","#2f1808","#000000","#ffffff","#ffffff","#ffffff","#ffffff","#ffffff","#ffffff","#ffffff","#ffffff"],["#ffffff","#ffffff","#ffffff","#ffffff","#ffffff","#ffffff","#ffffff","#ffffff","#ffffff","#2f1808","#311906","#2f1808","#311906","#311906","#311906","#311906","#2f1808","#2f1808","#000000","#311906","#311906","#ffffff","#ffffff","#ffffff","#ffffff","#ffffff","#ffffff","#ffffff"],["#ffffff","#ffffff","#ffffff","#ffffff","#ffffff","#ffffff","#ffffff","#ffffff","#ffffff","#ffffff","#311906","#311906","#311906","#311906","#311906","#2f1808","#2f1808","#000000","#311906","#311906","#311906","#ffffff","#ffffff","#ffffff","#ffffff","#ffffff","#ffffff","#ffffff"],["#ffffff","#ffffff","#ffffff","#ffffff","#ffffff","#ffffff","#ffffff","#ffffff","#ffffff","#ffffff","#000000","#2f1808","#2f1808","#311906","#311906","#311906","#000000","#311906","#311906","#311906","#311906","#331a09","#ffd700","#ffffff","#ffffff","#ffffff","#ffffff","#ffffff"],["#ffffff","#ffffff","#ffffff","#ffffff","#ffffff","#ffffff","#ffd700","#ffd700","#ffd700","#311906","#311906","#000000","#000000","#000000","#000000","#000000","#311906","#311906","#311906","#311906","#311906","#311906","#ffd700","#ffd700","#ffffff","#ffffff","#ffffff","#ffffff"],["#ffffff","#ffffff","#ffffff","#ffffff","#ffffff","#ffd700","#ffd700","#ffd700","#ffd700","#311906","#311906","#311906","#311906","#311906","#311906","#311906","#311906","#311906","#311906","#311906","#311906","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700"],["#ffffff","#ffffff","#ffffff","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#311906","#311906","#311906","#311906","#311906","#311906","#311906","#311906","#311906","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700"],["#ffffff","#ffffff","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700"],["#ffffff","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700"],["#ffffff","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700","#ffd700"]]';
 
   function generateDefaultIconGrid(character){
   // Se è Giovanni Becattini e c'è una griglia salvata nel codice, usa quella
@@ -306,12 +276,17 @@ const SAVED_DON_JSON = '[[null,null,null,null,null,null,null,null,null,null,null
   } else if(character.id === 'magnet' && SAVED_MELA_JSON && SAVED_MELA_JSON !== 'null'){
     try {
       return JSON.parse(SAVED_MELA_JSON);
-    } catch(e) {} 
+    } catch(e) {}
 
   } else if (character.id === 'tank' && SAVED_DON_JSON && SAVED_DON_JSON !== 'null'){
     try {
       return JSON.parse(SAVED_DON_JSON);
-    } catch(e) {} 
+    } catch(e) {}
+
+  } else if (character.id === 'runner' && SAVED_CASH_JSON && SAVED_CASH_JSON !== 'null'){
+    try {
+      return JSON.parse(SAVED_CASH_JSON);
+    } catch(e) {}
   }
 
   // Griglia generica di default se non presente o invalida
@@ -326,25 +301,10 @@ const SAVED_DON_JSON = '[[null,null,null,null,null,null,null,null,null,null,null
 }
   
 let iconGrids = {};
- 
-  async function loadIconGrid(id){
-    try{
-      const res = localStorage.getItem('metro-rush-icon-' + id);
-      if(res) return JSON.parse(res);
-    }catch(e){}
-    return null;
-  }
-  
-  async function saveIconGrid(id, grid){
-    try{ 
-      localStorage.setItem('metro-rush-icon-' + id, JSON.stringify(grid)); 
-    }catch(e){}
-  }   
   
   async function ensureIconLoaded(character){
     if(iconGrids[character.id]) return iconGrids[character.id];
-    const stored = await loadIconGrid(character.id);
-    iconGrids[character.id] = stored || generateDefaultIconGrid(character);
+    iconGrids[character.id] = generateDefaultIconGrid(character);
     return iconGrids[character.id];
   }
  
@@ -378,85 +338,22 @@ let iconGrids = {};
     }
   }
  
-  let editorCharId = null;
-  let editorGrid = null;
-  let editorTool = 'pencil';
-  let editorColor = '#4ecdc4';
-  let painting = false;
- 
-  function renderEditorPalette(){
-    const wrap = document.getElementById('editor-palette');
-    wrap.innerHTML = '';
-    EDITOR_PALETTE.forEach(col=>{
-      const sw = document.createElement('button');
-      sw.type = 'button';
-      sw.className = 'swatch' + (editorColor === col ? ' selected' : '');
-      sw.style.background = col;
-      sw.addEventListener('click', ()=>{
-        editorColor = col;
-        editorTool = 'pencil';
-        updateToolButtons();
-        renderEditorPalette();
-      });
-      wrap.appendChild(sw);
-    });
-  }
-  
-  function updateToolButtons(){
-    document.getElementById('tool-pencil').classList.toggle('selected', editorTool === 'pencil');
-    document.getElementById('tool-eraser').classList.toggle('selected', editorTool === 'eraser');
-  }
- 
-  async function openIconEditor(){
-    const c = currentCharacter();
-    editorCharId = c.id;
-    const grid = await ensureIconLoaded(c);
-    editorGrid = grid.map(row => row.slice());
-    document.getElementById('editor-char-name').textContent = c.name;
-    drawIconGridToCanvas(document.getElementById('editor-canvas'), editorGrid, { checker: true, showGrid: true });
-    document.getElementById('select-overlay').classList.add('hidden');
-    document.getElementById('icon-editor-overlay').classList.remove('hidden');
-  }
- 
-  function closeEditor(){
-    document.getElementById('icon-editor-overlay').classList.add('hidden');
-    document.getElementById('select-overlay').classList.remove('hidden');
-    renderCharacterSelect();
-  }
- 
-  const editorCanvas = document.getElementById('editor-canvas');
-  
-  function paintAt(clientX, clientY){
-    const rect = editorCanvas.getBoundingClientRect();
-    const cellDisp = rect.width / GRID_COLS;
-    const col = Math.floor((clientX - rect.left) / cellDisp);
-    const row = Math.floor((clientY - rect.top) / cellDisp);
-    if(row < 0 || row >= GRID_ROWS || col < 0 || col >= GRID_COLS) return;
-    editorGrid[row][col] = editorTool === 'eraser' ? null : editorColor;
-    drawIconGridToCanvas(editorCanvas, editorGrid, { checker: true, showGrid: true });
-  }
-  
-  editorCanvas.addEventListener('mousedown', e => { painting = true; paintAt(e.clientX, e.clientY); });
-  window.addEventListener('mousemove', e => { if(painting) paintAt(e.clientX, e.clientY); });
-  window.addEventListener('mouseup', () => { painting = false; });
-  
-  editorCanvas.addEventListener('touchstart', e => {
-    painting = true;
-    const t = e.touches[0]; paintAt(t.clientX, t.clientY);
-    e.preventDefault();
-  }, { passive: false });
-  editorCanvas.addEventListener('touchmove', e => {
-    if(painting){ const t = e.touches[0]; paintAt(t.clientX, t.clientY); }
-    e.preventDefault();
-  }, { passive: false });
-  editorCanvas.addEventListener('touchend', () => { painting = false; });
- 
   // ---------- character select UI ----------
   async function renderCharacterSelect(){
     const c = currentCharacter();
+    const isUnlocked = unlockedCharacters.has(c.id);
     document.getElementById('char-name').textContent = c.name;
     document.getElementById('char-ability-name').textContent = c.abilityName;
     document.getElementById('char-ability-desc').textContent = c.abilityDesc;
+    const lockInfo = document.getElementById('character-lock-info');
+    const unlockButton = document.getElementById('unlock-char-btn');
+    const startButton = document.getElementById('start-btn');
+    lockInfo.hidden = isUnlocked;
+    lockInfo.textContent = `BLOCCATO - COSTO ${c.price} MONETE`;
+    unlockButton.hidden = isUnlocked || !rushProfileReady;
+    unlockButton.textContent = `SBLOCCA - ${c.price} MONETE`;
+    unlockButton.disabled = walletCoins < c.price;
+    startButton.hidden = !isUnlocked || !rushProfileReady;
     const grid = await ensureIconLoaded(c);
     drawIconGridToCanvas(document.getElementById('char-icon'), grid, {});
   }
@@ -473,20 +370,164 @@ let iconGrids = {};
   async function saveHighScore(){
     try{ localStorage.setItem('metro-rush-highscore', String(highScore)); }catch(e){}
   }
-  
+
   async function saveSelectedCharacter(){
-    try{ localStorage.setItem('metro-rush-selected-character', currentCharacter().id); }catch(e){}
+    if(!rushAnimator) return;
+    try{ localStorage.setItem(`metro-rush-selected-character-${rushAnimator.id_animatore}`, currentCharacter().id); }catch(e){}
   }
   
   async function loadCharacterData(){
+    if(!rushAnimator) return;
     try{
-      const res = localStorage.getItem('metro-rush-selected-character');
+      const res = localStorage.getItem(`metro-rush-selected-character-${rushAnimator.id_animatore}`);
       if(res){
-        const idx = CHARACTERS.findIndex(c => c.id === res);
+        const idx = CHARACTERS.findIndex(c => c.id === res && unlockedCharacters.has(c.id));
         if(idx >= 0) selectedIndex = idx;
       }
     }catch(e){}
     renderCharacterSelect();
+  }
+
+  function updateRushProfileLabel(message = ''){
+    const label = document.getElementById('rush-profile-label');
+    if(!label) return;
+    if(rushAnimator && rushProfileReady){
+      label.textContent = `${rushAnimator.nome} ${rushAnimator.cognome} | MONETE ${walletCoins + pendingCoinAdds}`;
+    } else if(message){
+      label.textContent = message;
+    }
+    document.getElementById('hud-coins').textContent = `MONETE ${coinsCollected} | SALDO ${walletCoins}`;
+  }
+
+  async function initializeRushProfile(){
+    const accountLink = document.getElementById('rush-account-link');
+    try{
+      if(!sb || typeof loadAnimatoriAccounts !== 'function') throw new Error('Database non disponibile.');
+      await loadAnimatoriAccounts();
+      rushAnimator = typeof getSelectedAccount === 'function' ? getSelectedAccount() : null;
+      if(!rushAnimator || !rushAnimator.id_animatore){
+        updateRushProfileLabel('SELEZIONA IL TUO ACCOUNT PER SALVARE I PROGRESSI');
+        accountLink.hidden = false;
+        await renderCharacterSelect();
+        return;
+      }
+
+      const { data, error } = await sb.rpc('metro_rush_get_profile', {
+        p_id_animatore: Number(rushAnimator.id_animatore)
+      });
+      if(error) throw error;
+
+      walletCoins = Math.max(0, Number(data?.monete) || 0);
+      unlockedCharacters = new Set(['runner', ...(data?.personaggi_sbloccati || [])]);
+      rushProfileReady = true;
+      accountLink.hidden = true;
+
+      const legacyBalance = Math.max(0, Number(localStorage.getItem('metro-rush-total-coins')) || 0);
+      if(legacyBalance > 0 && !localStorage.getItem('metro-rush-legacy-coins-imported')){
+        const { data: importedBalance, error: importError } = await sb.rpc('metro_rush_add_coins', {
+          p_id_animatore: Number(rushAnimator.id_animatore),
+          p_amount: legacyBalance
+        });
+        if(importError) throw importError;
+        walletCoins = Math.max(0, Number(importedBalance) || 0);
+        localStorage.setItem('metro-rush-legacy-coins-imported', '1');
+        localStorage.removeItem('metro-rush-total-coins');
+      }
+
+      await loadCharacterData();
+      updateRushProfileLabel();
+      await renderCharacterSelect();
+    } catch(error){
+      console.error('Errore caricamento profilo Metro Rush:', error);
+      updateRushProfileLabel('IMPOSSIBILE CARICARE. ESEGUI db_migration_metro_rush.sql SU SUPABASE.');
+      accountLink.hidden = Boolean(rushAnimator);
+      await renderCharacterSelect();
+    }
+  }
+
+  async function flushCoinEarnings(){
+    if(!rushProfileReady || !rushAnimator) return false;
+    if(coinFlushPromise){
+      const saved = await coinFlushPromise;
+      if(!saved) return false;
+      return pendingCoinAdds ? flushCoinEarnings() : true;
+    }
+    if(pendingCoinAdds === 0) return true;
+
+    const amount = pendingCoinAdds;
+    pendingCoinAdds = 0;
+    coinFlushPromise = (async()=>{
+      try{
+        const { data, error } = await sb.rpc('metro_rush_add_coins', {
+          p_id_animatore: Number(rushAnimator.id_animatore),
+          p_amount: amount
+        });
+        if(error) throw error;
+        walletCoins = Math.max(0, Number(data) || 0);
+        updateRushProfileLabel();
+        await renderCharacterSelect();
+        return true;
+      } catch(error){
+        console.error('Errore salvataggio monete Metro Rush:', error);
+        pendingCoinAdds += amount;
+        updateRushProfileLabel('SALVATAGGIO MONETE IN ATTESA: CONTROLLA LA CONNESSIONE');
+        return false;
+      } finally{
+        coinFlushPromise = null;
+        if(pendingCoinAdds > 0 && !coinSaveTimer){
+          coinSaveTimer = setTimeout(()=>{
+            coinSaveTimer = null;
+            flushCoinEarnings();
+          }, 3000);
+        }
+      }
+    })();
+    return coinFlushPromise;
+  }
+
+  function queueCoinSave(){
+    pendingCoinAdds++;
+    if(coinSaveTimer) clearTimeout(coinSaveTimer);
+    coinSaveTimer = setTimeout(()=>{
+      coinSaveTimer = null;
+      flushCoinEarnings().then(()=>{
+        document.getElementById('final-total-coins').textContent = walletCoins + pendingCoinAdds;
+      });
+    }, 700);
+  }
+
+  async function unlockCurrentCharacter(){
+    const character = currentCharacter();
+    if(!rushProfileReady || character.id === 'runner' || unlockedCharacters.has(character.id)) return;
+    if(pendingCoinAdds && !await flushCoinEarnings()){
+      updateRushProfileLabel('SALDO NON AGGIORNATO: RIPROVA TRA POCO');
+      return;
+    }
+
+    const button = document.getElementById('unlock-char-btn');
+    button.disabled = true;
+    try{
+      const { data, error } = await sb.rpc('metro_rush_unlock_character', {
+        p_id_animatore: Number(rushAnimator.id_animatore),
+        p_character_id: character.id
+      });
+      if(error) throw error;
+      if(!data?.success){
+        updateRushProfileLabel(data?.message || 'ACQUISTO NON RIUSCITO');
+        return;
+      }
+
+      walletCoins = Math.max(0, Number(data.monete) || 0);
+      unlockedCharacters = new Set(['runner', ...(data.personaggi_sbloccati || [])]);
+      updateRushProfileLabel();
+      await renderCharacterSelect();
+      await saveSelectedCharacter();
+    } catch(error){
+      console.error('Errore acquisto personaggio Metro Rush:', error);
+      updateRushProfileLabel('ACQUISTO NON RIUSCITO: VERIFICA LA CONNESSIONE');
+    } finally{
+      button.disabled = false;
+    }
   }
 
   // ---------- game control ----------
@@ -501,6 +542,11 @@ let iconGrids = {};
   }
  
   async function startGame(){
+    if(!rushProfileReady){
+      updateRushProfileLabel('SELEZIONA UN ACCOUNT PER GIOCARE E SALVARE I PROGRESSI');
+      return;
+    }
+    if(!unlockedCharacters.has(currentCharacter().id)) return;
     resetGame();
     const c = currentCharacter();
     player.ability = c.ability;
@@ -522,8 +568,11 @@ let iconGrids = {};
     setTimeout(()=>{
       state = 'gameover';
       if(score > highScore){ highScore = score; saveHighScore(); }
+      flushCoinEarnings();
       document.getElementById('final-score').textContent = score;
       document.getElementById('final-best').textContent = highScore;
+      document.getElementById('final-coins').textContent = coinsCollected;
+      document.getElementById('final-total-coins').textContent = walletCoins + pendingCoinAdds;
       document.getElementById('gameover-overlay').classList.remove('hidden');
     }, 450);
   }
@@ -581,7 +630,7 @@ let iconGrids = {};
   
   function spawnCoinRow(){
     const lane = Math.floor(Math.random() * LANES);
-    spawnCoinLine(lane, -30, 5);
+    spawnCoinLine(lane, -30, 3);
   }
   
   function spawnRow(){
@@ -652,6 +701,8 @@ let iconGrids = {};
       if(laneDist <= allowedLane && Math.abs(c.y - (PLAYER_Y - player.jumpOffset)) < yTol){
         c.taken = true;
         coinsCollected++;
+        walletCoins++;
+        queueCoinSave();
         spawnSparkle(c.lane, c.y);
       }
     }
@@ -875,6 +926,7 @@ function drawParticles(){
   function updateHUD(){
     document.getElementById('hud-score').textContent = score;
     document.getElementById('hud-best').textContent = 'MIGLIOR ' + highScore;
+    document.getElementById('hud-coins').textContent = 'MONETE ' + coinsCollected + ' | SALDO ' + (walletCoins + pendingCoinAdds);
     const abilityEl = document.getElementById('hud-ability');
     if(state === 'playing' || state === 'hit'){
       if(player.ability === 'shield') abilityEl.textContent = 'SCUDO x' + player.shields;
@@ -955,6 +1007,7 @@ function drawParticles(){
   }, { passive: true });
  
   document.getElementById('start-btn').addEventListener('click', startGame);
+  document.getElementById('unlock-char-btn').addEventListener('click', unlockCurrentCharacter);
   document.getElementById('restart-btn').addEventListener('click', startGame);
   document.getElementById('change-char-btn').addEventListener('click', ()=>{
     state = 'menu';
@@ -973,38 +1026,13 @@ function drawParticles(){
     renderCharacterSelect();
   });
  
-  // ---------- editor icone ----------
-  document.getElementById('edit-icon-btn').addEventListener('click', openIconEditor);
-  document.getElementById('tool-pencil').addEventListener('click', ()=>{ editorTool='pencil'; updateToolButtons(); });
-  document.getElementById('tool-eraser').addEventListener('click', ()=>{ editorTool='eraser'; updateToolButtons(); });
-  document.getElementById('editor-custom-color').addEventListener('input', (e)=>{
-    editorColor = e.target.value;
-    editorTool = 'pencil';
-    updateToolButtons();
-    renderEditorPalette();
-  });
-  document.getElementById('editor-reset-btn').addEventListener('click', ()=>{
-    editorGrid = generateDefaultIconGrid(currentCharacter());
-    drawIconGridToCanvas(editorCanvas, editorGrid, { checker:true, showGrid:true });
-  });
-  document.getElementById('editor-clear-btn').addEventListener('click', ()=>{
-    editorGrid = Array.from({length: GRID_ROWS}, () => new Array(GRID_COLS).fill(null));
-    drawIconGridToCanvas(editorCanvas, editorGrid, { checker:true, showGrid:true });
-  });
-  document.getElementById('editor-save-btn').addEventListener('click', async ()=>{
-    iconGrids[editorCharId] = editorGrid.map(row => row.slice());
-    await saveIconGrid(editorCharId, iconGrids[editorCharId]);
-    closeEditor();
-  });
-  document.getElementById('editor-cancel-btn').addEventListener('click', closeEditor);
- 
   // ---------- init ----------
-  renderEditorPalette();
   renderCharacterSelect();
   loadHighScore();
-  loadCharacterData();
+  initializeRushProfile();
   requestAnimationFrame(loop);
 })();
-    </script>
+  </script>
+  </body>
 </html>
  
