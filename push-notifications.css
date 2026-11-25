@@ -54,7 +54,7 @@
 @media (max-width: 520px) {
   .push-notifications-panel {
     right: max(10px, env(safe-area-inset-right));
-    bottom: max(10px, env(safe-area-inset-bottom));
+    bottom: calc(max(10px, env(safe-area-inset-bottom)) + 56px);
     width: calc(100vw - 20px);
     gap: 8px;
     padding: 12px;
