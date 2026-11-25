@@ -51,6 +51,121 @@
   opacity: 0.65;
 }
 
+.push-notifications-dismiss {
+  display: grid;
+  flex: 0 0 32px;
+  width: 32px;
+  min-width: 32px;
+  height: 32px;
+  padding: 0;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text, #f7e5ca);
+  font-size: 1.35rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.push-notifications-dismiss:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.account-search-label {
+  display: block;
+  margin-top: 20px;
+  color: var(--text-muted, #d3b58b);
+  font-weight: 600;
+}
+
+.account-search-input {
+  width: 100%;
+  min-height: 48px;
+  margin-top: 8px;
+  padding: 12px 14px;
+  border: 1px solid var(--border, rgba(255, 140, 26, 0.3));
+  border-radius: 14px;
+  background: var(--surface, #171416);
+  color: var(--text, #f7e5ca);
+  font: inherit;
+}
+
+.account-search-input:focus-visible {
+  outline: 2px solid var(--accent, #ff8c1a);
+  outline-offset: 2px;
+}
+
+.account-card {
+  width: 100%;
+  text-align: left;
+  font: inherit;
+}
+
+.settings-container {
+  width: min(760px, 100%);
+}
+
+.settings-notifications-card {
+  display: grid;
+  gap: 14px;
+  margin-top: 20px;
+}
+
+.settings-notifications-card h2,
+.settings-intro {
+  margin: 0;
+}
+
+.settings-intro,
+.settings-push-status {
+  color: var(--text-muted, #d3b58b);
+  line-height: 1.5;
+}
+
+.settings-push-status {
+  min-height: 1.5em;
+  margin: 0;
+}
+
+.push-preferences-list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 14px;
+  border: 1px solid var(--border, rgba(255, 140, 26, 0.3));
+  border-radius: 14px;
+}
+
+.push-preferences-list legend {
+  padding: 0 6px;
+  color: var(--text-muted, #d3b58b);
+}
+
+.push-preference-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 42px;
+  cursor: pointer;
+}
+
+.push-preference-option input {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--accent, #ff8c1a);
+}
+
+.settings-save-button {
+  width: 100%;
+  min-height: 46px;
+}
+
+.settings-save-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
 @media (max-width: 520px) {
   .push-notifications-panel {
     right: max(10px, env(safe-area-inset-right));
@@ -63,5 +178,12 @@
   .push-notifications-button {
     padding: 10px;
     font-size: 0.82rem;
+  }
+
+  .push-notifications-dismiss {
+    flex-basis: 30px;
+    width: 30px;
+    min-width: 30px;
+    height: 30px;
   }
 }

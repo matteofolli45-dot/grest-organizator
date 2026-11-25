@@ -1212,22 +1212,47 @@ function renderAccountCards() {
     const accountGrid = document.getElementById('accountCards');
     if (!accountGrid) return;
 
+    const searchInput = document.getElementById('accountSearch');
+    const searchTerm = normalizeAccountSearch(searchInput?.value || '');
+    const filteredAccounts = animatoriAccounts.filter(animatore => {
+        const searchableText = normalizeAccountSearch([
+            animatore.nome,
+            animatore.cognome,
+            animatore.ruolo
+        ].filter(Boolean).join(' '));
+        return searchableText.includes(searchTerm);
+    });
+
     if (!animatoriAccounts.length) {
         accountGrid.innerHTML = '<div class="account-loading">Nessun account disponibile.</div>';
         return;
     }
 
-    accountGrid.innerHTML = animatoriAccounts.map(animatore => {
+    if (!filteredAccounts.length) {
+        accountGrid.innerHTML = '<div class="account-loading">Nessun account corrisponde alla ricerca.</div>';
+        return;
+    }
+
+    accountGrid.innerHTML = filteredAccounts.map(animatore => {
         const initials = createInitials(animatore.nome, animatore.cognome);
-        const accountId = encodeURIComponent(animatore.id);
+        const accountId = escapeAppelloHtml(String(animatore.id));
         return `
-            <div class="account-card" onclick="apriModalPassword('${animatore.id}')" style="cursor: pointer;">
-                <div class="account-initials">${initials}</div>
-                <h3>${animatore.nome || '-'} ${animatore.cognome || '-'}</h3>
-                <p>${animatore.ruolo || 'Animatore'}</p>
-            </div>
+            <button type="button" class="account-card" data-account-id="${accountId}">
+                <div class="account-initials">${escapeAppelloHtml(initials)}</div>
+                <h3>${escapeAppelloHtml(animatore.nome || '-')} ${escapeAppelloHtml(animatore.cognome || '-')}</h3>
+                <p>${escapeAppelloHtml(animatore.ruolo || 'Animatore')}</p>
+            </button>
         `;
     }).join('');
+}
+
+function normalizeAccountSearch(value) {
+    return String(value)
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .trim()
+        .toLocaleLowerCase('it-IT')
+        .replace(/\s+/g, ' ');
 }
 
 function apriModalPassword(accountId) {
@@ -3165,6 +3190,16 @@ function setCurrentYear() {
 document.addEventListener("DOMContentLoaded", async () => {
     setCurrentYear();
     aggiornaMessaggioAvvisi();
+
+    const accountSearch = document.getElementById('accountSearch');
+    const accountCards = document.getElementById('accountCards');
+    if (accountSearch && accountCards) {
+        accountSearch.addEventListener('input', renderAccountCards);
+        accountCards.addEventListener('click', event => {
+            const card = event.target.closest('[data-account-id]');
+            if (card) apriModalPassword(card.dataset.accountId);
+        });
+    }
 
     // Gestione Password Login Admin
     const loginButton = document.getElementById('loginButton');

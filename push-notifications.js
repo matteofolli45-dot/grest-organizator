@@ -2,7 +2,15 @@
     const SUPABASE_URL = 'https://gjoxvtqcmqmnunewcsgg.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_liOVczDXHXYACezbKqzGyA_NFMy0DeG';
     const DEVICE_ID_KEY = 'grest_push_device_id_v1';
+    const PREFERENCES_KEY = 'grest_push_preferences_v1';
+    const DISMISSED_KEY = 'grest_push_prompt_dismissed_v1';
     const FUNCTION_NAME = 'push-notifications';
+    const DEFAULT_PREFERENCES = Object.freeze({
+        grestActivities: true,
+        grestNotices: true,
+        saborMeetings: true,
+        saborNotices: true
+    });
 
     const isStandalone = () =>
         window.matchMedia('(display-mode: standalone)').matches ||
@@ -13,6 +21,25 @@
             'serviceWorker' in navigator &&
             'PushManager' in window &&
             'Notification' in window;
+    }
+
+    function readPreferences() {
+        try {
+            const stored = JSON.parse(localStorage.getItem(PREFERENCES_KEY) || '{}');
+            return Object.fromEntries(
+                Object.keys(DEFAULT_PREFERENCES).map(key => [
+                    key,
+                    typeof stored[key] === 'boolean' ? stored[key] : DEFAULT_PREFERENCES[key]
+                ])
+            );
+        } catch (error) {
+            console.error('Lettura preferenze notifiche non riuscita:', error);
+            return { ...DEFAULT_PREFERENCES };
+        }
+    }
+
+    function saveLocalPreferences(preferences) {
+        localStorage.setItem(PREFERENCES_KEY, JSON.stringify(preferences));
     }
 
     function getDeviceId() {
@@ -55,29 +82,100 @@
                 <p class="push-notifications-status" role="status" aria-live="polite"></p>
             </div>
             <button type="button" class="push-notifications-button">Attiva</button>
+            <button type="button" class="push-notifications-dismiss" aria-label="Chiudi il messaggio notifiche" title="Chiudi">×</button>
         `;
         document.body.appendChild(panel);
         return {
+            panel,
             status: panel.querySelector('.push-notifications-status'),
-            button: panel.querySelector('.push-notifications-button')
+            button: panel.querySelector('.push-notifications-button'),
+            dismiss: panel.querySelector('.push-notifications-dismiss')
         };
     }
 
+    function readPreferencesFromForm() {
+        return Object.fromEntries(
+            Object.keys(DEFAULT_PREFERENCES).map(key => [
+                key,
+                document.querySelector(`[data-push-category="${key}"]`)?.checked === true
+            ])
+        );
+    }
+
+    function populatePreferencesForm(preferences) {
+        Object.entries(preferences).forEach(([key, enabled]) => {
+            const checkbox = document.querySelector(`[data-push-category="${key}"]`);
+            if (checkbox) checkbox.checked = enabled;
+        });
+    }
+
     async function initialize() {
-        const { status, button } = createPanel();
-        button.disabled = true;
+        const settingsPage = document.body.classList.contains('settings-page');
+        let panel = null;
+        let status;
+        let button;
+
+        if (settingsPage) {
+            status = document.getElementById('pushPreferencesStatus');
+            button = document.getElementById('pushSettingsToggle');
+            populatePreferencesForm(readPreferences());
+            const preferencesForm = document.getElementById('pushPreferences');
+            const savePreferencesButton = document.getElementById('savePushPreferences');
+            if (preferencesForm) preferencesForm.disabled = false;
+            if (savePreferencesButton) savePreferencesButton.disabled = false;
+        } else if (localStorage.getItem(DISMISSED_KEY) !== '1') {
+            ({ panel, status, button } = createPanel());
+        } else {
+            return;
+        }
+
+        if (!status || !button) return;
+
         const setStatus = message => { status.textContent = message; };
         const setBusy = busy => {
             button.disabled = busy;
             button.setAttribute('aria-busy', String(busy));
         };
 
+        if (panel) {
+            panel.querySelector('.push-notifications-dismiss').addEventListener('click', () => {
+                localStorage.setItem(DISMISSED_KEY, '1');
+                panel.remove();
+            });
+        }
+
+        const preferencesForm = document.getElementById('pushPreferences');
+        const savePreferencesButton = document.getElementById('savePushPreferences');
+        if (settingsPage && savePreferencesButton) {
+            savePreferencesButton.addEventListener('click', async () => {
+                const preferences = readPreferencesFromForm();
+                try {
+                    saveLocalPreferences(preferences);
+                    if (button.dataset.enabled === 'true') {
+                        await invokePushFunction('preferences', {
+                            deviceId: getDeviceId(),
+                            preferences
+                        });
+                        setStatus('Preferenze salvate e sincronizzate con questo dispositivo.');
+                    } else {
+                        setStatus('Preferenze salvate. Saranno applicate quando attivi le notifiche.');
+                    }
+                } catch (error) {
+                    console.error('Salvataggio preferenze notifiche non riuscito:', error);
+                    setStatus('Preferenze salvate sul dispositivo, ma non sincronizzate. Riprova.');
+                }
+            });
+        }
+
         if (!supportsPush()) {
-            setStatus('Le notifiche push non sono supportate qui. Usa il sito su HTTPS con un browser compatibile.');
+            setStatus('Le notifiche push non sono supportate qui. Usa HTTPS e un browser compatibile.');
             button.hidden = true;
+            if (preferencesForm) preferencesForm.disabled = true;
+            if (savePreferencesButton) savePreferencesButton.disabled = true;
             return;
         }
 
+        button.disabled = true;
         let registration;
         let publicKey;
         try {
@@ -88,7 +186,11 @@
         } catch (error) {
             console.error('Inizializzazione notifiche push non riuscita:', error);
             setStatus('Notifiche non ancora configurate. Riprova più tardi.');
-            button.disabled = true;
+            if (!settingsPage) button.disabled = true;
+            else {
+                button.textContent = 'Riprova';
+                button.disabled = false;
+            }
             return;
         }
 
@@ -103,11 +205,17 @@
             try {
                 await invokePushFunction('subscribe', {
                     deviceId: getDeviceId(),
-                    subscription: subscription.toJSON()
+                    subscription: subscription.toJSON(),
+                    preferences: readPreferences()
                 });
-                setStatus('Riceverai gli avvisi e le nuove attività.');
-                button.textContent = 'Disattiva';
+                if (!settingsPage) {
+                    panel.remove();
+                    return;
+                }
+                setStatus('Notifiche attive su questo dispositivo.');
+                button.textContent = 'Disattiva notifiche';
                 button.dataset.enabled = 'true';
+                button.disabled = false;
             } catch (error) {
                 console.error('Aggiornamento iscrizione push non riuscito:', error);
                 setStatus('Impossibile verificare l’iscrizione. Tocca per riprovare.');
@@ -116,11 +224,13 @@
             }
         } else if (Notification.permission === 'denied') {
             setStatus('Notifiche bloccate dal browser. Riattivale dalle impostazioni del sito.');
+            button.hidden = !settingsPage;
+            button.disabled = true;
         } else {
             const isIphone = /iPhone|iPad|iPod/i.test(navigator.userAgent);
             setStatus(isIphone && !isStandalone()
                 ? 'Su iPhone aggiungi prima il sito alla schermata Home, poi riaprilo da lì.'
-                : 'Ricevi sul dispositivo le nuove attività GREST e gli avvisi di entrambi i progetti.');
+                : 'Ricevi le attività e gli avvisi che selezioni nelle impostazioni.');
             button.textContent = 'Attiva notifiche';
             button.disabled = false;
         }
@@ -137,6 +247,7 @@
                     delete button.dataset.enabled;
                     button.textContent = 'Attiva notifiche';
                     setStatus('Notifiche disattivate su questo dispositivo.');
+                    if (panel) panel.remove();
                     return;
                 }
 
@@ -156,14 +267,20 @@
                 });
                 await invokePushFunction('subscribe', {
                     deviceId: getDeviceId(),
-                    subscription: activeSubscription.toJSON()
+                    subscription: activeSubscription.toJSON(),
+                    preferences: readPreferences()
                 });
+                localStorage.removeItem(DISMISSED_KEY);
+                if (panel) {
+                    panel.remove();
+                    return;
+                }
                 button.dataset.enabled = 'true';
-                button.textContent = 'Disattiva';
-                setStatus('Notifiche attive: riceverai gli avvisi e le nuove attività.');
+                button.textContent = 'Disattiva notifiche';
+                setStatus('Notifiche attive su questo dispositivo.');
             } catch (error) {
                 console.error('Attivazione notifiche push non riuscita:', error);
-                setStatus('Non è stato possibile attivare le notifiche. Verifica la connessione e riprova.');
+                setStatus('Non è stato possibile aggiornare le notifiche. Verifica la connessione e riprova.');
             } finally {
                 setBusy(false);
             }

@@ -5,9 +5,14 @@ CREATE TABLE IF NOT EXISTS public.push_subscriptions (
   endpoint text NOT NULL UNIQUE,
   p256dh text NOT NULL,
   auth text NOT NULL,
+  preferences jsonb NOT NULL DEFAULT '{"grestActivities":true,"grestNotices":true,"saborMeetings":true,"saborNotices":true}'::jsonb,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
 );
+
+ALTER TABLE public.push_subscriptions
+  ADD COLUMN IF NOT EXISTS preferences jsonb NOT NULL
+  DEFAULT '{"grestActivities":true,"grestNotices":true,"saborMeetings":true,"saborNotices":true}'::jsonb;
 
 ALTER TABLE public.push_subscriptions ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON public.push_subscriptions FROM anon, authenticated;

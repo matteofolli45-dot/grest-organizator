@@ -8,12 +8,26 @@ const vapidPrivateKey = Deno.env.get("VAPID_PRIVATE_KEY");
 const vapidSubject = Deno.env.get("VAPID_SUBJECT");
 const allowedOrigin = Deno.env.get("APP_ORIGIN");
 const webhookSecret = Deno.env.get("PUSH_WEBHOOK_SECRET");
-
 const supabase = supabaseUrl && serviceRoleKey
     ? createClient(supabaseUrl, serviceRoleKey, {
         auth: { autoRefreshToken: false, persistSession: false }
     })
     : null;
+
+const defaultPreferences = {
+    grestActivities: true,
+    grestNotices: true,
+    saborMeetings: true,
+    saborNotices: true
+};
+
+type PushCategory = keyof typeof defaultPreferences;
+type PushMessage = {
+    title: string;
+    body: string;
+    url: string;
+    category: PushCategory;
+};
 
 function jsonResponse(body: unknown, status: number, origin = "") {
     return new Response(JSON.stringify(body), {
@@ -28,7 +42,7 @@ function jsonResponse(body: unknown, status: number, origin = "") {
     });
 }
 
-function toPushMessage(table: string, record: Record<string, unknown>, operation: string) {
+function toPushMessage(table: string, record: Record<string, unknown>, operation: string): PushMessage | null {
     const truncate = (value: unknown, maxLength = 150) => {
         const text = typeof value === "string" ? value.trim() : "";
         const characters = Array.from(text);
@@ -44,7 +58,8 @@ function toPushMessage(table: string, record: Record<string, unknown>, operation
         return {
             title: operation === "UPDATE" ? "Programmazione GREST aggiornata" : "Nuova attività GREST",
             body: truncate(details) || "È stata aggiornata la programmazione.",
-            url: "./index.html"
+            url: "./index.html",
+            category: "grestActivities"
         };
     }
 
@@ -57,7 +72,8 @@ function toPushMessage(table: string, record: Record<string, unknown>, operation
                 ? "Incontro Sabato Oratorio aggiornato"
                 : "Nuovo incontro Sabato Oratorio",
             body: truncate(details) || "È stato pubblicato un nuovo incontro.",
-            url: "./sabato_oratorio.html"
+            url: "./sabato_oratorio.html",
+            category: "saborMeetings"
         };
     }
 
@@ -66,7 +82,8 @@ function toPushMessage(table: string, record: Record<string, unknown>, operation
         return {
             title: isSabor ? "Nuovo avviso Sabato Oratorio" : "Nuovo avviso GREST",
             body: truncate(record.testo) || "È stato pubblicato un nuovo avviso.",
-            url: isSabor ? "./avvisi_sabor.html" : "./avvisi_grest.html"
+            url: isSabor ? "./avvisi_sabor.html" : "./avvisi_grest.html",
+            category: isSabor ? "saborNotices" : "grestNotices"
         };
     }
 
@@ -90,7 +107,7 @@ async function sendPush(payload: Record<string, unknown>) {
     webpush.setVapidDetails(vapidSubject, vapidPublicKey, vapidPrivateKey);
     const { data: subscriptions, error } = await supabase
         .from("push_subscriptions")
-        .select("id, endpoint, p256dh, auth");
+        .select("id, endpoint, p256dh, auth, preferences");
     if (error) {
         console.error("Lettura iscrizioni push non riuscita:", error);
         return jsonResponse({ error: "Impossibile caricare le iscrizioni push." }, 500);
@@ -98,7 +115,11 @@ async function sendPush(payload: Record<string, unknown>) {
 
     const expiredIds: string[] = [];
     let delivered = 0;
-    const results = await Promise.allSettled((subscriptions || []).map(async subscription => {
+    const subscribed = (subscriptions || []).filter(subscription => {
+        const preferences = { ...defaultPreferences, ...(subscription.preferences || {}) } as Record<PushCategory, boolean>;
+        return preferences[message.category] !== false;
+    });
+    const results = await Promise.allSettled(subscribed.map(async subscription => {
         try {
             await webpush.sendNotification({
                 endpoint: subscription.endpoint,
@@ -162,7 +183,7 @@ Deno.serve(async request => {
     }
 
     try {
-        const { action, deviceId, subscription } = await request.json();
+        const { action, deviceId, subscription, preferences } = await request.json();
         if (action === "get-public-key") {
             return jsonResponse({ publicKey: vapidPublicKey || null }, 200, origin);
         }
@@ -197,6 +218,7 @@ Deno.serve(async request => {
                 endpoint: subscription.endpoint,
                 p256dh: subscription.keys.p256dh,
                 auth: subscription.keys.auth,
+                preferences: normalizePreferences(preferences),
                 updated_at: new Date().toISOString()
             }, { onConflict: "endpoint" });
             if (error) {
@@ -204,6 +226,24 @@ Deno.serve(async request => {
                 return jsonResponse({ error: "Impossibile salvare l’iscrizione push." }, 500, origin);
             }
             return jsonResponse({ subscribed: true }, 200, origin);
+        }
+
+        if (action === "preferences") {
+            if (typeof deviceId !== "string" || !/^[0-9a-f-]{36}$/i.test(deviceId)) {
+                return jsonResponse({ error: "Identificativo dispositivo non valido." }, 400, origin);
+            }
+            if (!isValidPreferences(preferences)) {
+                return jsonResponse({ error: "Preferenze notifiche non valide." }, 400, origin);
+            }
+            const { error } = await supabase
+                .from("push_subscriptions")
+                .update({ preferences, updated_at: new Date().toISOString() })
+                .eq("id", deviceId);
+            if (error) {
+                console.error("Aggiornamento preferenze push non riuscito:", error);
+                return jsonResponse({ error: "Impossibile aggiornare le preferenze." }, 500, origin);
+            }
+            return jsonResponse({ preferences }, 200, origin);
         }
 
         if (action === "unsubscribe") {
@@ -224,3 +264,15 @@ Deno.serve(async request => {
         return jsonResponse({ error: "Richiesta push non valida." }, 400, origin);
     }
 });
+
+function isValidPreferences(value: unknown): value is Record<PushCategory, boolean> {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+    const preferences = value as Record<string, unknown>;
+    return Object.keys(defaultPreferences).every(key => typeof preferences[key] === "boolean") &&
+        Object.keys(preferences).every(key => key in defaultPreferences);
+}
+
+function normalizePreferences(value: unknown): Record<PushCategory, boolean> {
+    if (!isValidPreferences(value)) return { ...defaultPreferences };
+    return { ...value };
+}

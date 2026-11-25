@@ -6,6 +6,10 @@ Le notifiche sono opt-in per dispositivo e coprono:
 - nuovi incontri o modifiche a data e titolo del Sabato Oratorio;
 - nuovi avvisi GREST e Sabato Oratorio.
 
+Dal menu **Impostazioni** ogni dispositivo può attivare/disattivare le notifiche e scegliere separatamente attività GREST, avvisi GREST, incontri Sabato Oratorio e avvisi Sabato Oratorio. Le preferenze sono salvate sul dispositivo e applicate anche dal server, così gli avvisi deselezionati non vengono inviati.
+
+Il pannello di invito può essere chiuso con **×**; la chiusura è ricordata sul dispositivo. Per attivare le push in seguito, apri **Impostazioni** dal menu.
+
 Il browser deve supportare Web Push e il sito deve essere servito su HTTPS. Su iPhone/iPad (iOS/iPadOS 16.4 o successivi) l'utente deve prima aggiungere il sito alla schermata Home e aprirlo da lì. L'autorizzazione viene chiesta solo premendo **Attiva notifiche**.
 
 ## Configurazione Supabase
