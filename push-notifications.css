@@ -72,6 +72,75 @@
   background: rgba(255, 255, 255, 0.18);
 }
 
+.push-guide-backdrop {
+  position: fixed;
+  z-index: 1200;
+  inset: 0;
+  display: grid;
+  align-items: center;
+  justify-items: center;
+  padding: max(16px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right))
+    max(16px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+  background: rgba(0, 0, 0, 0.78);
+}
+
+.push-guide-dialog {
+  width: min(560px, 100%);
+  max-height: 100%;
+  overflow-y: auto;
+  padding: 22px;
+  border: 1px solid var(--border, rgba(255, 140, 26, 0.3));
+  border-radius: 20px;
+  background: var(--surface, #171416);
+  color: var(--text, #f7e5ca);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.6);
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.push-guide-dialog h2 {
+  margin: 0 0 12px;
+}
+
+.push-guide-dialog h3 {
+  margin: 18px 0 8px;
+}
+
+.push-guide-dialog p,
+.push-guide-dialog li {
+  line-height: 1.55;
+}
+
+.push-guide-first-step {
+  padding: 12px;
+  border-radius: 12px;
+  background: rgba(255, 140, 26, 0.12);
+}
+
+.push-guide-dialog ol {
+  display: grid;
+  gap: 8px;
+  padding-left: 24px;
+}
+
+.push-guide-note {
+  color: var(--accent, #ff8c1a);
+}
+
+.push-guide-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.push-guide-actions button {
+  width: auto;
+  min-height: 44px;
+  padding: 10px 16px;
+}
+
 .account-search-label {
   display: block;
   margin-top: 20px;
@@ -104,12 +173,24 @@
 
 .settings-container {
   width: min(760px, 100%);
+  display: block;
+  grid-template-columns: minmax(0, 1fr);
+  margin: 0 auto;
+}
+
+body.settings-page {
+  display: flex;
+  min-height: 100vh;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 76px 20px 28px;
 }
 
 .settings-notifications-card {
   display: grid;
   gap: 14px;
   margin-top: 20px;
+  width: 100%;
 }
 
 .settings-notifications-card h2,
@@ -167,6 +248,11 @@
 }
 
 @media (max-width: 520px) {
+  body.settings-page {
+    align-items: flex-start;
+    padding: 76px 12px 20px;
+  }
+
   .push-notifications-panel {
     right: max(10px, env(safe-area-inset-right));
     bottom: calc(max(10px, env(safe-area-inset-bottom)) + 56px);
@@ -185,5 +271,18 @@
     width: 30px;
     min-width: 30px;
     height: 30px;
+  }
+}
+
+@media (max-height: 700px) {
+  body.settings-page {
+    padding-top: 76px;
+  }
+}
+
+@media (min-height: 900px) and (min-width: 521px) {
+  body.settings-page {
+    align-items: center;
+    padding: 28px 20px;
   }
 }

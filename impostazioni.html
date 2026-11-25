@@ -25,33 +25,47 @@
         </div>
 
         <section class="card settings-notifications-card" aria-labelledby="pushPreferencesTitle">
-            <h2 id="pushPreferencesTitle">Notifiche push</h2>
+            <h2 id="pushPreferencesTitle">Notifiche</h2>
             <p class="settings-intro">Scegli quali aggiornamenti vuoi ricevere su questo dispositivo.</p>
+            <p class="settings-intro" id="pushAnimatorStatus"></p>
             <div class="settings-push-status" id="pushPreferencesStatus" role="status" aria-live="polite">
                 Caricamento impostazioni...
             </div>
             <button type="button" id="pushSettingsToggle" class="settings-save-button" disabled>
                 Caricamento...
             </button>
-            <fieldset class="push-preferences-list" id="pushPreferences" disabled>
-                <legend>Tipi di notifica</legend>
-                <label class="push-preference-option">
-                    <input type="checkbox" data-push-category="grestActivities" checked>
-                    <span>Attività e programmazione GREST</span>
-                </label>
-                <label class="push-preference-option">
-                    <input type="checkbox" data-push-category="grestNotices" checked>
-                    <span>Avvisi GREST</span>
-                </label>
-                <label class="push-preference-option">
-                    <input type="checkbox" data-push-category="saborMeetings" checked>
-                    <span>Incontri Sabato Oratorio</span>
-                </label>
-                <label class="push-preference-option">
-                    <input type="checkbox" data-push-category="saborNotices" checked>
-                    <span>Avvisi Sabato Oratorio</span>
-                </label>
-            </fieldset>
+            <div class="push-preferences-groups" id="pushPreferences">
+                <fieldset class="push-preferences-list" disabled>
+                    <legend>GREST</legend>
+                    <label class="push-preference-option">
+                        <input type="checkbox" data-push-category="grestManager" checked>
+                        <span>Gestore del gioco</span>
+                    </label>
+                    <label class="push-preference-option">
+                        <input type="checkbox" data-push-category="grestActivities" checked>
+                        <span>Attività</span>
+                    </label>
+                    <label class="push-preference-option">
+                        <input type="checkbox" data-push-category="grestNotices" checked>
+                        <span>Avvisi</span>
+                    </label>
+                    <label class="push-preference-option">
+                        <input type="checkbox" data-push-category="grestLunchCount" checked>
+                        <span>Totale persone a mensa <small>(Alle 9:15)</small></span>
+                    </label>
+                </fieldset>
+                <fieldset class="push-preferences-list" disabled>
+                    <legend>Sabato Oratorio</legend>
+                    <label class="push-preference-option">
+                        <input type="checkbox" data-push-category="saborActivities" checked>
+                        <span>Attività e incontri</span>
+                    </label>
+                    <label class="push-preference-option">
+                        <input type="checkbox" data-push-category="saborNotices" checked>
+                        <span>Avvisi</span>
+                    </label>
+                </fieldset>
+            </div>
             <button type="button" id="savePushPreferences" class="settings-save-button" disabled>
                 Salva preferenze
             </button>

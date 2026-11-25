@@ -6,9 +6,11 @@
     const DISMISSED_KEY = 'grest_push_prompt_dismissed_v1';
     const FUNCTION_NAME = 'push-notifications';
     const DEFAULT_PREFERENCES = Object.freeze({
+        grestManager: true,
         grestActivities: true,
         grestNotices: true,
-        saborMeetings: true,
+        grestLunchCount: true,
+        saborActivities: true,
         saborNotices: true
     });
 
@@ -29,7 +31,11 @@
             return Object.fromEntries(
                 Object.keys(DEFAULT_PREFERENCES).map(key => [
                     key,
-                    typeof stored[key] === 'boolean' ? stored[key] : DEFAULT_PREFERENCES[key]
+                    typeof stored[key] === 'boolean'
+                        ? stored[key]
+                        : key === 'saborActivities' && typeof stored.saborMeetings === 'boolean'
+                            ? stored.saborMeetings
+                            : DEFAULT_PREFERENCES[key]
                 ])
             );
         } catch (error) {
@@ -49,6 +55,11 @@
             localStorage.setItem(DEVICE_ID_KEY, deviceId);
         }
         return deviceId;
+    }
+
+    function getAnimatorId() {
+        const value = Number(localStorage.getItem('selectedAnimatoreId'));
+        return Number.isSafeInteger(value) && value > 0 ? value : null;
     }
 
     function base64UrlToBytes(value) {
@@ -93,6 +104,75 @@
         };
     }
 
+    function isMobileDevice() {
+        return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+    }
+
+    function createActivationGuide(isIphone, onContinue, onClose) {
+        const previousFocus = document.activeElement;
+        const guide = document.createElement('div');
+        guide.className = 'push-guide-backdrop';
+        guide.innerHTML = `
+            <section class="push-guide-dialog" role="dialog" aria-modal="true" aria-labelledby="pushGuideTitle" tabindex="-1">
+                <h2 id="pushGuideTitle">Come attivare le notifiche</h2>
+                <p class="push-guide-first-step"><strong>Prima di iniziare:</strong> apri l’elenco delle schede e duplica questa pagina (se non trovi “Duplica”, non chiuderla). Lascia aperta questa scheda: potrai tornare qui senza rifare i passaggi.</p>
+                ${isIphone ? `
+                    <h3>🍏 iPhone</h3>
+                    <ol>
+                        <li>Apri questa pagina in <strong>Safari</strong>. Non usare Chrome o il browser interno di WhatsApp, Instagram o altre app.</li>
+                        <li>Tocca <strong>Condividi</strong> (il quadrato con la freccia verso l’alto).</li>
+                        <li>Scorri e scegli <strong>Aggiungi alla schermata Home</strong>, poi tocca <strong>Aggiungi</strong>.</li>
+                        <li>Torna alla schermata Home e apri l’app dall’icona nuova. Se serve, fai di nuovo il login. Se non trovi il pulsante, apri <strong>Menu → Impostazioni</strong>.</li>
+                        <li>In questa app premi <strong>Attiva notifiche</strong> e poi <strong>Consenti</strong>.</li>
+                    </ol>
+                ` : `
+                    <h3>🤖 Android</h3>
+                    <ol>
+                        <li>Apri questa pagina con <strong>Google Chrome</strong> (consigliato) o Samsung Internet, non dentro WhatsApp o Instagram.</li>
+                        <li>Fai il login con il tuo profilo animatore.</li>
+                        <li>Premi <strong>Attiva notifiche</strong> e poi <strong>Consenti</strong> nel riquadro che compare.</li>
+                        <li><strong>Facoltativo:</strong> in Chrome apri i tre puntini <strong>⋮</strong> e scegli <strong>Aggiungi a schermata Home</strong> o <strong>Installa app</strong>.</li>
+                    </ol>
+                `}
+                <p class="push-guide-note" role="status" aria-live="polite"></p>
+                <div class="push-guide-actions">
+                    <button type="button" class="push-guide-cancel">Non ora</button>
+                    <button type="button" class="push-guide-continue">Ho capito, continua</button>
+                </div>
+            </section>
+        `;
+        document.body.appendChild(guide);
+
+        const dialog = guide.querySelector('.push-guide-dialog');
+        const note = guide.querySelector('.push-guide-note');
+        const cancelButton = guide.querySelector('.push-guide-cancel');
+        const continueButton = guide.querySelector('.push-guide-continue');
+        const closeGuide = () => {
+            guide.remove();
+            onClose();
+            if (previousFocus instanceof HTMLElement) previousFocus.focus();
+        };
+        dialog.focus();
+
+        cancelButton.addEventListener('click', closeGuide);
+        guide.addEventListener('click', event => {
+            if (event.target === guide) closeGuide();
+        });
+        guide.addEventListener('keydown', event => {
+            if (event.key === 'Escape') closeGuide();
+        });
+        continueButton.addEventListener('click', async () => {
+            if (isIphone && !isStandalone()) {
+                note.textContent = 'Su iPhone le notifiche si attivano solo dall’app aperta con la nuova icona sulla schermata Home. Completa prima i passaggi sopra, apri quell’icona e riprova.';
+                return;
+            }
+            closeGuide();
+            await onContinue();
+        });
+
+        return guide;
+    }
+
     function readPreferencesFromForm() {
         return Object.fromEntries(
             Object.keys(DEFAULT_PREFERENCES).map(key => [
@@ -100,6 +180,12 @@
                 document.querySelector(`[data-push-category="${key}"]`)?.checked === true
             ])
         );
+    }
+
+    function setPreferencesDisabled(disabled) {
+        document.querySelectorAll('#pushPreferences fieldset').forEach(fieldset => {
+            fieldset.disabled = disabled;
+        });
     }
 
     function populatePreferencesForm(preferences) {
@@ -118,10 +204,15 @@
         if (settingsPage) {
             status = document.getElementById('pushPreferencesStatus');
             button = document.getElementById('pushSettingsToggle');
+            const animatorStatus = document.getElementById('pushAnimatorStatus');
+            if (animatorStatus) {
+                animatorStatus.textContent = getAnimatorId()
+                    ? 'Dispositivo associato all’account animatore selezionato.'
+                    : 'Per ricevere la notifica “Gestore del gioco”, seleziona prima il tuo account animatore.';
+            }
             populatePreferencesForm(readPreferences());
-            const preferencesForm = document.getElementById('pushPreferences');
             const savePreferencesButton = document.getElementById('savePushPreferences');
-            if (preferencesForm) preferencesForm.disabled = false;
+            setPreferencesDisabled(false);
             if (savePreferencesButton) savePreferencesButton.disabled = false;
         } else if (localStorage.getItem(DISMISSED_KEY) !== '1') {
             ({ panel, status, button } = createPanel());
@@ -137,6 +228,27 @@
             button.setAttribute('aria-busy', String(busy));
         };
 
+        if (isMobileDevice()) {
+            button.addEventListener('click', event => {
+                if (button.dataset.enabled === 'true' || button.dataset.guideConfirmed === 'true') return;
+                event.stopImmediatePropagation();
+                if (button.dataset.guideOpen === 'true') return;
+                button.dataset.guideOpen = 'true';
+                createActivationGuide(/iPhone|iPad|iPod/i.test(navigator.userAgent), async () => {
+                    if (button.dataset.pushReady !== 'true') {
+                        setStatus('Connessione non pronta. Ricarico la pagina: riprova ad attivare le notifiche tra poco.');
+                        button.dataset.guideConfirmed = 'true';
+                        button.click();
+                        return;
+                    }
+                    button.dataset.guideConfirmed = 'true';
+                    button.click();
+                }, () => {
+                    button.dataset.guideOpen = 'false';
+                });
+            }, true);
+        }
+
         if (panel) {
             panel.querySelector('.push-notifications-dismiss').addEventListener('click', () => {
                 localStorage.setItem(DISMISSED_KEY, '1');
@@ -144,7 +256,6 @@
             });
         }
 
-        const preferencesForm = document.getElementById('pushPreferences');
         const savePreferencesButton = document.getElementById('savePushPreferences');
         if (settingsPage && savePreferencesButton) {
             savePreferencesButton.addEventListener('click', async () => {
@@ -154,7 +265,8 @@
                     if (button.dataset.enabled === 'true') {
                         await invokePushFunction('preferences', {
                             deviceId: getDeviceId(),
-                            preferences
+                            preferences,
+                            animatorId: getAnimatorId()
                         });
                         setStatus('Preferenze salvate e sincronizzate con questo dispositivo.');
                     } else {
@@ -170,7 +282,7 @@
         if (!supportsPush()) {
             setStatus('Le notifiche push non sono supportate qui. Usa HTTPS e un browser compatibile.');
             button.hidden = true;
-            if (preferencesForm) preferencesForm.disabled = true;
+            setPreferencesDisabled(true);
             if (savePreferencesButton) savePreferencesButton.disabled = true;
             return;
         }
@@ -190,6 +302,7 @@
             else {
                 button.textContent = 'Riprova';
                 button.disabled = false;
+                button.addEventListener('click', () => window.location.reload(), { once: true });
             }
             return;
         }
@@ -199,6 +312,7 @@
             button.disabled = true;
             return;
         }
+        button.dataset.pushReady = 'true';
 
         const subscription = await registration.pushManager.getSubscription();
         if (subscription && Notification.permission === 'granted') {
@@ -206,7 +320,8 @@
                 await invokePushFunction('subscribe', {
                     deviceId: getDeviceId(),
                     subscription: subscription.toJSON(),
-                    preferences: readPreferences()
+                    preferences: readPreferences(),
+                    animatorId: getAnimatorId()
                 });
                 if (!settingsPage) {
                     panel.remove();
@@ -268,7 +383,8 @@
                 await invokePushFunction('subscribe', {
                     deviceId: getDeviceId(),
                     subscription: activeSubscription.toJSON(),
-                    preferences: readPreferences()
+                    preferences: readPreferences(),
+                    animatorId: getAnimatorId()
                 });
                 localStorage.removeItem(DISMISSED_KEY);
                 if (panel) {

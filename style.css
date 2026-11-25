@@ -2394,6 +2394,13 @@ input[type="password"]::placeholder {
 @media (max-width: 768px) {
     .avvisi-grid {
         grid-template-columns: 1fr;
+        align-items: stretch;
+    }
+
+    .avvisi-grid .avvisi-col-left,
+    .avvisi-grid .avvisi-col-right {
+        width: 100%;
+        min-width: 0;
     }
 
     .weather-forecast {
@@ -3076,6 +3083,15 @@ input[type="password"]::placeholder {
 @media (max-width: 768px) {
     .avvisi-grid {
         flex-direction: column;
+        align-items: stretch;
+        width: 100%;
+    }
+
+    .avvisi-grid .avvisi-col-left,
+    .avvisi-grid .avvisi-col-right {
+        width: 100%;
+        max-width: 100%;
+        flex: 0 0 100%;
     }
 }
 /* ============================

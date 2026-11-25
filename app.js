@@ -646,8 +646,22 @@ function getLocalGameAssignments() {
 
 function getLocalGameAssignment(animatore) {
     if (!animatore) return null;
+    if (animatore.gestisce_gioco !== undefined) {
+        return animatore.gestisce_gioco && animatore.giorno_gioco && animatore.nome_gioco
+            ? { day: animatore.giorno_gioco, game: animatore.nome_gioco }
+            : null;
+    }
     const assignments = getLocalGameAssignments();
     return assignments[getAccountKey(animatore)] || null;
+}
+
+function isMissingGameAssignmentColumns(error) {
+    const message = String(error?.message || '').toLowerCase();
+    const mentionsGameColumn = ['gestisce_gioco', 'giorno_gioco', 'nome_gioco']
+        .some(column => message.includes(column));
+    return mentionsGameColumn &&
+        (error?.code === '42703' || error?.code === 'PGRST204' ||
+            message.includes('does not exist') || message.includes('schema cache'));
 }
 
 function saveLocalGameAssignment(animatore, assignment) {
@@ -852,38 +866,41 @@ async function salvaModificaAnimatore() {
         return;
     }
 
-    const oldMetadata = parseRoleMetadata(animatore.ruolo || '');
-    const oldBaseRole = getBaseRole(animatore.ruolo);
-    const ruoloCambiato = ruoloBase !== oldBaseRole;
-    const settimaneCambiato = JSON.stringify(settimaneSelezionate.sort()) !== JSON.stringify(normalizzaSettimane(animatore.settimana).sort());
-
-    const shouldUpdateDB = ruoloCambiato || settimaneCambiato;
-
-    if (managesGame && hasGameSelection) {
-        saveLocalGameAssignment(animatore, { day: giornoSelezionato, game: giocoSelezionato });
-    } else {
-        saveLocalGameAssignment(animatore, null);
-    }
-
-    if (!shouldUpdateDB) {
-        chiudiModalModifica();
-        mostraNotifica('Assegnazione di gioco salvata localmente.', 'success');
-        return;
-    }
-
     try {
-        const { error } = await sb
-            .from('animatori')
-            .update({
-                ruolo: ruoloFinale,
-                settimana: settimaneSelezionate
-            })
-            .eq('id_animatore', animatore.id_animatore);
+        const baseUpdates = {
+            ruolo: ruoloFinale,
+            settimana: settimaneSelezionate
+        };
+        const gameUpdates = {
+            ...baseUpdates,
+            gestisce_gioco: Boolean(managesGame && hasGameSelection),
+            giorno_gioco: managesGame && hasGameSelection ? giornoSelezionato : null,
+            nome_gioco: managesGame && hasGameSelection ? giocoSelezionato : null
+        };
 
+        let { error } = await sb
+            .from('animatori')
+            .update(gameUpdates)
+            .eq('id_animatore', animatore.id_animatore);
+        let assignmentSavedRemotely = true;
+
+        if (isMissingGameAssignmentColumns(error)) {
+            assignmentSavedRemotely = false;
+            ({ error } = await sb
+                .from('animatori')
+                .update(baseUpdates)
+                .eq('id_animatore', animatore.id_animatore));
+        }
         if (error) throw error;
 
+        saveLocalGameAssignment(animatore, managesGame && hasGameSelection
+            ? { day: giornoSelezionato, game: giocoSelezionato }
+            : null);
         chiudiModalModifica();
-        mostraNotifica('Animatore aggiornato con successo.', 'success');
+        mostraNotifica(assignmentSavedRemotely
+            ? 'Animatore aggiornato con successo.'
+            : 'Profilo aggiornato. L’assegnazione del gioco è salvata solo su questo dispositivo finché il database non viene aggiornato.',
+        assignmentSavedRemotely ? 'success' : 'error');
         await loadAnimatoriAccounts();
         mostraAnimatori();
     } catch (error) {
@@ -1217,8 +1234,7 @@ function renderAccountCards() {
     const filteredAccounts = animatoriAccounts.filter(animatore => {
         const searchableText = normalizeAccountSearch([
             animatore.nome,
-            animatore.cognome,
-            animatore.ruolo
+            animatore.cognome
         ].filter(Boolean).join(' '));
         return searchableText.includes(searchTerm);
     });
