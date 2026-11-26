@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#140b28">
+    <title>Conteggi e intolleranze - Sabato Oratorio</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="sabor-theme sabor-class-counts-theme">
+    <main class="container sabor-admin-container">
+        <h1>Conteggi e intolleranze <span class="current-year"></span></h1>
+        <section class="card sabor-wrapper">
+            <div class="sabor-header">
+                <h2 class="sabor-title">Dati dei partecipanti</h2>
+                <div class="sabor-day-picker">
+                    <label for="saborDataInput" class="sabor-day-label">Data:</label>
+                    <input type="date" id="saborDataInput" class="sabor-day-input">
+                </div>
+            </div>
+
+            <div id="saborNessunIncontro" class="sabor-empty-state" style="display:none;">
+                <h3>Nessun incontro registrato per questa data.</h3>
+                <p><a href="admin_sabor.html">Crea prima l'incontro del sabato</a>, poi inserisci qui i dati delle classi.</p>
+            </div>
+
+            <div id="saborIncontroDettagli" class="sabor-incontro-dettagli" style="display:none;">
+                <section class="sabor-merenda-panel">
+                    <div class="sabor-total-box" aria-live="polite">
+                        <span>Totale bambini di tutte le classi</span>
+                        <strong id="saborTotaleBambini">0</strong>
+                    </div>
+                    <div class="sabor-save-row">
+                        <span id="saborMerendaStato" role="status" aria-live="polite"></span>
+                    </div>
+
+                    <div id="saborDatiStoriciNonAssegnati" class="sabor-legacy-food-data sabor-merenda-view-box sabor-merenda-view-wide" hidden>
+                        <span>Dati precedenti non suddivisi per classe</span>
+                        <p>Queste informazioni erano state inserite senza indicare la classe. Sono conservate qui e non vengono assegnate automaticamente.</p>
+                        <p>Celiaci: <strong id="saborLegacyCeliaci">0</strong></p>
+                        <p>Intolleranti: <strong id="saborLegacyIntolleranti">0</strong></p>
+                        <p>Intolleranze: <span id="saborLegacyIntolleranze">Nessuna indicata</span></p>
+                        <p>Altre note: <span id="saborLegacyProblematiche">Nessuna indicata</span></p>
+                    </div>
+
+                    <div class="sabor-class-count-list">
+                    <fieldset class="sabor-class-accounts">
+                        <legend>1ª elementare</legend>
+                        <div class="sabor-count-grid">
+                            <label class="sabor-form-row" for="saborBambiniClasse1"><span>Numero bambini</span><input type="number" id="saborBambiniClasse1" data-sabor-field="bambini_classe_1" min="0" step="1" value="0"></label>
+                            <label class="sabor-form-row" for="saborCeliaciClasse1"><span>Bambini celiaci</span><input type="number" id="saborCeliaciClasse1" data-sabor-field="celiaci_classe_1" min="0" step="1" value="0"></label>
+                            <label class="sabor-form-row" for="saborIntollerantiClasse1"><span>Bambini intolleranti</span><input type="number" id="saborIntollerantiClasse1" data-sabor-field="intolleranti_classe_1" min="0" step="1" value="0"></label>
+                        </div>
+                        <label class="sabor-form-row" for="saborIntolleranzeClasse1"><span>Intolleranze</span><textarea id="saborIntolleranzeClasse1" data-sabor-field="intolleranze_classe_1" rows="2" placeholder="Es. lattosio, frutta a guscio"></textarea></label>
+                    </fieldset>
+                    <fieldset class="sabor-class-accounts">
+                        <legend>2ª elementare</legend>
+                        <div class="sabor-count-grid">
+                            <label class="sabor-form-row" for="saborBambiniClasse2"><span>Numero bambini</span><input type="number" id="saborBambiniClasse2" data-sabor-field="bambini_classe_2" min="0" step="1" value="0"></label>
+                            <label class="sabor-form-row" for="saborCeliaciClasse2"><span>Bambini celiaci</span><input type="number" id="saborCeliaciClasse2" data-sabor-field="celiaci_classe_2" min="0" step="1" value="0"></label>
+                            <label class="sabor-form-row" for="saborIntollerantiClasse2"><span>Bambini intolleranti</span><input type="number" id="saborIntollerantiClasse2" data-sabor-field="intolleranti_classe_2" min="0" step="1" value="0"></label>
+                        </div>
+                        <label class="sabor-form-row" for="saborIntolleranzeClasse2"><span>Intolleranze</span><textarea id="saborIntolleranzeClasse2" data-sabor-field="intolleranze_classe_2" rows="2" placeholder="Es. lattosio, frutta a guscio"></textarea></label>
+                    </fieldset>
+                    <fieldset class="sabor-class-accounts">
+                        <legend>3ª elementare</legend>
+                        <div class="sabor-count-grid">
+                            <label class="sabor-form-row" for="saborBambiniClasse3"><span>Numero bambini</span><input type="number" id="saborBambiniClasse3" data-sabor-field="bambini_classe_3" min="0" step="1" value="0"></label>
+                            <label class="sabor-form-row" for="saborCeliaciClasse3"><span>Bambini celiaci</span><input type="number" id="saborCeliaciClasse3" data-sabor-field="celiaci_classe_3" min="0" step="1" value="0"></label>
+                            <label class="sabor-form-row" for="saborIntollerantiClasse3"><span>Bambini intolleranti</span><input type="number" id="saborIntollerantiClasse3" data-sabor-field="intolleranti_classe_3" min="0" step="1" value="0"></label>
+                        </div>
+                        <label class="sabor-form-row" for="saborIntolleranzeClasse3"><span>Intolleranze</span><textarea id="saborIntolleranzeClasse3" data-sabor-field="intolleranze_classe_3" rows="2" placeholder="Es. lattosio, frutta a guscio"></textarea></label>
+                    </fieldset>
+                    <fieldset class="sabor-class-accounts">
+                        <legend>4ª elementare</legend>
+                        <div class="sabor-count-grid">
+                            <label class="sabor-form-row" for="saborBambiniClasse4"><span>Numero bambini</span><input type="number" id="saborBambiniClasse4" data-sabor-field="bambini_classe_4" min="0" step="1" value="0"></label>
+                            <label class="sabor-form-row" for="saborCeliaciClasse4"><span>Bambini celiaci</span><input type="number" id="saborCeliaciClasse4" data-sabor-field="celiaci_classe_4" min="0" step="1" value="0"></label>
+                            <label class="sabor-form-row" for="saborIntollerantiClasse4"><span>Bambini intolleranti</span><input type="number" id="saborIntollerantiClasse4" data-sabor-field="intolleranti_classe_4" min="0" step="1" value="0"></label>
+                        </div>
+                        <label class="sabor-form-row" for="saborIntolleranzeClasse4"><span>Intolleranze</span><textarea id="saborIntolleranzeClasse4" data-sabor-field="intolleranze_classe_4" rows="2" placeholder="Es. lattosio, frutta a guscio"></textarea></label>
+                    </fieldset>
+                    <fieldset class="sabor-class-accounts">
+                        <legend>5ª elementare</legend>
+                        <div class="sabor-count-grid">
+                            <label class="sabor-form-row" for="saborBambiniClasse5"><span>Numero bambini</span><input type="number" id="saborBambiniClasse5" data-sabor-field="bambini_classe_5" min="0" step="1" value="0"></label>
+                            <label class="sabor-form-row" for="saborCeliaciClasse5"><span>Bambini celiaci</span><input type="number" id="saborCeliaciClasse5" data-sabor-field="celiaci_classe_5" min="0" step="1" value="0"></label>
+                            <label class="sabor-form-row" for="saborIntollerantiClasse5"><span>Bambini intolleranti</span><input type="number" id="saborIntollerantiClasse5" data-sabor-field="intolleranti_classe_5" min="0" step="1" value="0"></label>
+                        </div>
+                        <label class="sabor-form-row" for="saborIntolleranzeClasse5"><span>Intolleranze</span><textarea id="saborIntolleranzeClasse5" data-sabor-field="intolleranze_classe_5" rows="2" placeholder="Es. lattosio, frutta a guscio"></textarea></label>
+                    </fieldset>
+                    </div>
+                </section>
+            </div>
+        </section>
+    </main>
+    <script src="app.js"></script>
+</body>
+</html>

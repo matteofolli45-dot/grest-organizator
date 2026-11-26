@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#140b28">
+    <title>Merenda - Sabato Oratorio</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="sabor-theme sabor-merenda-theme">
+    <main class="container sabor-admin-container" id="merendaContent">
+        <h1>Gestione Merenda <span class="current-year"></span></h1>
+        <section class="card sabor-wrapper">
+            <div class="sabor-header">
+                <h2 class="sabor-title">Merenda del sabato</h2>
+                <div class="sabor-day-picker">
+                    <label for="saborDataInput" class="sabor-day-label">Data:</label>
+                    <input type="date" id="saborDataInput" class="sabor-day-input">
+                </div>
+            </div>
+
+
+            <div id="saborIncontroDettagli" class="sabor-incontro-dettagli" style="display:none;">
+                
+                <section class="sabor-merenda-panel" aria-labelledby="saborMerendaTitle">
+                    <h2 id="saborMerendaTitle">Partecipanti e merenda</h2>
+                    <div class="sabor-total-box" aria-live="polite">
+                        <span>Totale partecipanti alla merenda</span>
+                        <strong id="saborTotaleBambini">0</strong>
+                    </div>
+                    <div class="sabor-merenda-view-grid" aria-label="Esigenze alimentari dei bambini">
+                        <div class="sabor-merenda-view-box">
+                            <span>Bambini celiaci</span>
+                            <strong id="saborCeliaciView">0</strong>
+                        </div>
+                        <div class="sabor-merenda-view-box">
+                            <span>Bambini intolleranti</span>
+                            <strong id="saborIntollerantiView">0</strong>
+                        </div>
+                        <div class="sabor-merenda-view-box sabor-merenda-view-wide">
+                            <span>Intolleranze: a cosa?</span>
+                            <p id="saborIntolleranzeView">Nessuna intolleranza segnalata</p>
+                        </div>
+                        <div class="sabor-merenda-view-box sabor-merenda-view-wide">
+                            <span>Altre problematiche per la merenda</span>
+                            <p id="saborProblematicheView">Nessuna problematica segnalata</p>
+                        </div>
+                    </div>
+                    <fieldset class="sabor-snack-fieldset">
+                        <legend>Cosa c'è per merenda</legend>
+                        <div class="sabor-snack-options">
+                            <label><input type="checkbox" name="saborMerenda" data-sabor-field="merende" value="Dolci"> Dolci</label>
+                            <label><input type="checkbox" name="saborMerenda" data-sabor-field="merende" value="Pane e Nutella"> Pane e Nutella</label>
+                            <label><input type="checkbox" name="saborMerenda" data-sabor-field="merende" value="Pane e marmellata"> Pane e marmellata</label>
+                            <label><input type="checkbox" name="saborMerenda" data-sabor-field="merende" value="Pane e olio"> Pane e olio</label>
+                            <label><input type="checkbox" name="saborMerenda" data-sabor-field="merende" value="Crackers"> Crackers</label>
+                            <label><input type="checkbox" name="saborMerenda" data-sabor-field="merende" value="Succhi di frutta"> Succhi di frutta</label>
+                            <label><input type="checkbox" name="saborMerenda" data-sabor-field="merende" value="Estathé"> Estathé</label>
+                            <label><input type="checkbox" name="saborMerenda" data-sabor-field="merende" value="Biscotti vari"> Biscotti vari</label>
+                            <label><input type="checkbox" name="saborMerenda" data-sabor-field="merende" value="Panino"> Panino</label>
+                        </div>
+                    </fieldset>
+                    <div class="sabor-save-row">
+                        <span id="saborMerendaStato" role="status" aria-live="polite"></span>
+                    </div>
+                </section>
+            </div>
+        </section>
+    </main>
+
+    <script src="app.js"></script>
+</body>
+</html>

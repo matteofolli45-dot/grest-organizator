@@ -8,7 +8,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link rel="stylesheet" href="style.css">
 </head>
-<body class="sabor-theme sabor-admin-theme">
+<body class="sabor-theme sabor-admin-theme admin-active">
     <div class="top-right-menu">
         <button id="menuToggle" type="button" aria-expanded="false">Menu</button>
         <div class="top-right-dropdown" id="menuDropdown" aria-hidden="true">
@@ -19,17 +19,7 @@
         </div>
     </div>
 
-    <div class="login-card-sabor" id="loginCard">
-        <h3>Accesso Amministratore</h3>
-        <input type="password" id="adminPassword" placeholder="Inserisci password">
-        <div class="button-row">
-            <button type="button" onclick="window.location.href='sabato_oratorio.html'">Indietro</button>
-            <button type="button" id="loginButton">Accedi</button>
-        </div>
-        <p id="loginError" class="error-message"></p>
-    </div>
-
-    <main class="container sabor-admin-container" id="adminContent" style="display:none;">
+    <main class="container sabor-admin-container" id="adminContent">
         <h1>Gestione Sabato Oratorio <span class="current-year"></span></h1>
 
         <section class="card sabor-wrapper">

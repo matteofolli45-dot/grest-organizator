@@ -11,8 +11,9 @@ if (window.supabase && typeof window.supabase.createClient === 'function') {
 } else {
     console.error("Libreria Supabase non caricata. Verifica l'inclusione dello script Supabase nell'HTML.");
 }
+window.grestSupabaseClient = sb;
 
-const SABOR_ADMIN_PASSWORD = "sabatoratorio";
+const SABOR_MERENDA_PASSWORD = "sabatoratorio";
 const ADMIN_PASSWORD = "grest2026";
 
 
@@ -226,15 +227,24 @@ function checkAdminPassword() {
     }
 }
 
-function checkSaborAdminPassword() {
+function checkSaborMerendaPassword() {
     const passwordInput = document.getElementById('adminPassword');
     const password = passwordInput ? passwordInput.value : '';
-    if (password === SABOR_ADMIN_PASSWORD) {
+    if (password === SABOR_MERENDA_PASSWORD) {
         showLoginError('');
-        unlockAdminArea();
+        unlockMerendaArea();
     } else {
         showLoginError('Password errata. Riprova.');
     }
+}
+
+function unlockMerendaArea() {
+    document.body.classList.add('admin-active');
+    const loginCard = document.getElementById('loginCard');
+    const merendaContent = document.getElementById('merendaContent');
+    if (loginCard) loginCard.style.display = 'none';
+    if (merendaContent) merendaContent.style.display = 'grid';
+    inizializzaPaginaMerendaSabor();
 }
 
 function showLoginError(message) {
@@ -3221,13 +3231,18 @@ document.addEventListener("DOMContentLoaded", async () => {
     const loginButton = document.getElementById('loginButton');
     const adminPassword = document.getElementById('adminPassword');
     if (loginButton && adminPassword) {
-        const verificaPassword = document.body.classList.contains('sabor-admin-theme')
-            ? checkSaborAdminPassword
+        const verificaPassword = document.body.classList.contains('sabor-merenda-theme')
+            ? checkSaborMerendaPassword
             : checkAdminPassword;
         loginButton.addEventListener('click', verificaPassword);
         adminPassword.addEventListener('keypress', e => {
             if (e.key === 'Enter') verificaPassword();
         });
+    }
+
+    if (document.body.classList.contains('sabor-admin-theme')) {
+        if (document.getElementById('saborIncontriAdminBody')) inizializzaAdminSabor();
+        if (document.getElementById('saborAdminAvvisiList')) caricaAvvisiAdminSabor();
     }
 
     // Navigazione Mese Calendario
@@ -5364,22 +5379,73 @@ let saborSyncInCorso = false;
 let saborSalvataggioInCorso = false;
 let saborAutoSaveTimer = null;
 let saborSchemaMerendaDisponibile = false;
-const SABOR_POLLING_MS = 500;
+const SABOR_POLLING_MS = 5000;
 const SABOR_AUTOSAVE_DELAY_MS = 700;
 const SABOR_COLONNE_MERENDA = [
     'numero_bambini', 'bambini_classe_1', 'bambini_classe_2', 'bambini_classe_3',
     'bambini_classe_4', 'bambini_classe_5', 'numero_celiaci', 'numero_intolleranti',
     'intolleranze', 'problematiche_merenda', 'merende'
 ];
+const SABOR_COLONNE_CONTEGGI = [1, 2, 3, 4, 5].flatMap(classe => [
+    `celiaci_classe_${classe}`,
+    `intolleranti_classe_${classe}`,
+    `intolleranze_classe_${classe}`
+]);
 
 function impostaDisponibilitaCampiMerenda(disponibili) {
     saborSchemaMerendaDisponibile = disponibili;
+    const merendaEditor = document.body.classList.contains('sabor-merenda-theme');
+    const paginaConteggi = document.body.classList.contains('sabor-class-counts-theme');
     document.querySelectorAll('.sabor-merenda-panel [data-sabor-field]').forEach(input => {
-        input.disabled = !disponibili;
+        const campoMerenda = input.dataset.saborField === 'merende';
+        input.disabled = !disponibili ||
+            (merendaEditor ? !campoMerenda : paginaConteggi ? campoMerenda : true);
     });
     const stato = document.getElementById('saborMerendaStato');
     if (stato && !disponibili) {
-        stato.textContent = 'Database non aggiornato: esegui db_migration_merenda_sabor.sql nel SQL Editor di Supabase.';
+        stato.textContent = 'Campi disattivati: applica supabase/migrations/20261126200000_sabor_class_food_data.sql in Supabase, poi ricarica questa pagina.';
+    }
+}
+
+function aggiornaVistaMerendaSabor(incontro) {
+    const totale = [1, 2, 3, 4, 5].reduce((somma, classe) =>
+        somma + Number(incontro?.[`bambini_classe_${classe}`] || 0), 0);
+
+    const totaleElement = document.getElementById('saborTotaleBambini');
+    if (totaleElement) totaleElement.textContent = String(totale);
+
+    [1, 2, 3, 4, 5].forEach(classe => {
+        const classeElement = document.getElementById(`saborClasseView${classe}`);
+        if (classeElement) classeElement.textContent = String(Number(incontro?.[`bambini_classe_${classe}`] || 0));
+    });
+
+    const legacyCeliaciElement = document.getElementById('saborLegacyCeliaci');
+    if (legacyCeliaciElement) legacyCeliaciElement.textContent = String(Number(incontro?.numero_celiaci || 0));
+
+    const legacyIntollerantiElement = document.getElementById('saborLegacyIntolleranti');
+    if (legacyIntollerantiElement) legacyIntollerantiElement.textContent = String(Number(incontro?.numero_intolleranti || 0));
+
+    const legacyIntolleranzeElement = document.getElementById('saborLegacyIntolleranze');
+    if (legacyIntolleranzeElement) legacyIntolleranzeElement.textContent = incontro?.intolleranze || 'Nessuna indicata';
+
+    const legacyProblematicheElement = document.getElementById('saborLegacyProblematiche');
+    if (legacyProblematicheElement) legacyProblematicheElement.textContent = incontro?.problematiche_merenda || 'Nessuna indicata';
+
+    const legacyDataElement = document.getElementById('saborDatiStoriciNonAssegnati');
+    if (legacyDataElement) {
+        const hasLegacyData = Number(incontro?.numero_celiaci || 0) > 0 ||
+            Number(incontro?.numero_intolleranti || 0) > 0 ||
+            Boolean(incontro?.intolleranze || incontro?.problematiche_merenda);
+        legacyDataElement.hidden = !hasLegacyData;
+    }
+
+    const merendeElement = document.getElementById('saborMerendeView');
+    if (merendeElement) {
+        const merende = Array.isArray(incontro?.merende) ? incontro.merende : [];
+        merendeElement.innerHTML = merende.length
+            ? merende.map(merenda => `<li>${String(merenda).replace(/[&<>"']/g, carattere =>
+                ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[carattere]))}</li>`).join('')
+            : '<li>Nessuna merenda selezionata</li>';
     }
 }
 
@@ -5625,27 +5691,41 @@ async function caricaSaborIncontro(dataISO) {
         impostaDisponibilitaCampiMerenda(false);
         dettagliEl.style.display = 'none';
         if (noIncontroEl) noIncontroEl.style.display = 'block';
-        [1, 2, 3, 4, 5].forEach(classe => {
-            document.getElementById(`saborBambiniClasse${classe}`).value = 0;
+        aggiornaVistaMerendaSabor({
+            bambini_classe_1: 0,
+            bambini_classe_2: 0,
+            bambini_classe_3: 0,
+            bambini_classe_4: 0,
+            bambini_classe_5: 0,
+            numero_celiaci: 0,
+            numero_intolleranti: 0,
+            intolleranze: '',
+            problematiche_merenda: '',
+            merende: []
+        });
+        document.querySelectorAll('.sabor-merenda-panel [data-sabor-field]').forEach(input => {
+            if (input.type !== 'checkbox') input.value = input.type === 'number' ? 0 : '';
         });
         aggiornaTotaleBambiniSabor();
-        document.getElementById('saborNumeroCeliaci').value = 0;
-        document.getElementById('saborNumeroIntolleranti').value = 0;
-        document.getElementById('saborIntolleranze').value = '';
-        document.getElementById('saborProblematicheMerenda').value = '';
         document.querySelectorAll('input[name="saborMerenda"]').forEach(input => { input.checked = false; });
         return;
     }
 
-    const schemaMerendaDisponibile = SABOR_COLONNE_MERENDA.every(nomeCampo =>
+    const paginaConteggi = document.body.classList.contains('sabor-class-counts-theme');
+    const colonneRichieste = paginaConteggi
+        ? [...SABOR_COLONNE_MERENDA, ...SABOR_COLONNE_CONTEGGI]
+        : SABOR_COLONNE_MERENDA;
+    const schemaMerendaDisponibile = colonneRichieste.every(nomeCampo =>
         Object.hasOwn(saborIncontroCorrente, nomeCampo)
     );
     impostaDisponibilitaCampiMerenda(schemaMerendaDisponibile);
     if (noIncontroEl) noIncontroEl.style.display = 'none';
     dettagliEl.style.display = 'grid';
 
-    document.getElementById('saborIncontroTitolo').textContent = saborIncontroCorrente.titolo_attivita;
-    document.getElementById('saborIncontroDescrizione').textContent = saborIncontroCorrente.descrizione || '';
+    const titoloElement = document.getElementById('saborIncontroTitolo');
+    if (titoloElement) titoloElement.textContent = saborIncontroCorrente.titolo_attivita;
+    const descrizioneElement = document.getElementById('saborIncontroDescrizione');
+    if (descrizioneElement) descrizioneElement.textContent = saborIncontroCorrente.descrizione || '';
 
     let nomeResponsabile = saborIncontroCorrente.nome_responsabile || '—';
     if (saborIncontroCorrente.tipo_responsabile === 'animatore') {
@@ -5654,20 +5734,13 @@ async function caricaSaborIncontro(dataISO) {
     } else if (saborIncontroCorrente.tipo_responsabile === 'catechista') {
         nomeResponsabile = `${nomeResponsabile} (catechista)`;
     }
-    document.getElementById('saborIncontroResponsabile').textContent = nomeResponsabile;
-    const conteggiClassi = [1, 2, 3, 4, 5].map(classe => {
-        const nomeCampo = `bambini_classe_${classe}`;
-        const input = document.getElementById(`saborBambiniClasse${classe}`);
-        if (!saborCampiModificati.has(nomeCampo)) {
-            input.value = saborIncontroCorrente[nomeCampo] ?? 0;
-        }
-        return Number(input.value || 0);
-    });
-    aggiornaTotaleBambiniSabor(conteggiClassi);
-    ['numero_celiaci', 'numero_intolleranti', 'intolleranze', 'problematiche_merenda'].forEach(nomeCampo => {
-        if (!saborCampiModificati.has(nomeCampo)) {
-            const input = document.querySelector(`[data-sabor-field="${nomeCampo}"]`);
-            input.value = saborIncontroCorrente[nomeCampo] ?? '';
+    const responsabileElement = document.getElementById('saborIncontroResponsabile');
+    if (responsabileElement) responsabileElement.textContent = nomeResponsabile;
+    aggiornaVistaMerendaSabor(saborIncontroCorrente);
+    document.querySelectorAll('.sabor-merenda-panel [data-sabor-field]').forEach(input => {
+        const nomeCampo = input.dataset.saborField;
+        if (input.type !== 'checkbox' && !saborCampiModificati.has(nomeCampo)) {
+            input.value = saborIncontroCorrente[nomeCampo] ?? (input.type === 'number' ? 0 : '');
         }
     });
     if (!saborCampiModificati.has('merende')) {
@@ -5677,7 +5750,8 @@ async function caricaSaborIncontro(dataISO) {
         });
     }
     if (saborSchemaMerendaDisponibile && saborCampiModificati.size === 0) {
-        document.getElementById('saborMerendaStato').textContent = '';
+        const statoElement = document.getElementById('saborMerendaStato');
+        if (statoElement) statoElement.textContent = '';
     }
 }
 
@@ -5725,6 +5799,7 @@ function aggiornaTotaleBambiniSabor(conteggi = null) {
 
 async function salvaSaborMerenda() {
     const messaggio = document.getElementById('saborMerendaStato');
+    if (!messaggio) return;
     if (!sb || !saborIncontroCorrente || saborSalvataggioInCorso) return;
     if (!saborSchemaMerendaDisponibile) {
         impostaDisponibilitaCampiMerenda(false);
@@ -5737,20 +5812,32 @@ async function salvaSaborMerenda() {
         return;
     }
 
-    const conteggiClassi = [1, 2, 3, 4, 5].map(classe =>
-        Number(document.getElementById(`saborBambiniClasse${classe}`).value)
-    );
-    const numeroBambini = conteggiClassi.reduce((somma, valore) => somma + valore, 0);
-    const numeroCeliaci = Number(document.getElementById('saborNumeroCeliaci').value);
-    const numeroIntolleranti = Number(document.getElementById('saborNumeroIntolleranti').value);
-    if (![...conteggiClassi, numeroCeliaci, numeroIntolleranti].every(value => Number.isInteger(value) && value >= 0) ||
-        numeroCeliaci > numeroBambini || numeroIntolleranti > numeroBambini) {
-        messaggio.textContent = 'Controlla i conteggi: nessun valore può superare il numero di bambini.';
-        return;
+    const conteggiClassi = [1, 2, 3, 4, 5].map(classe => {
+        const input = document.getElementById(`saborBambiniClasse${classe}`);
+        return input
+            ? Number(input.value || 0)
+            : Number(saborIncontroCorrente[`bambini_classe_${classe}`] || 0);
+    });
+    if (document.body.classList.contains('sabor-class-counts-theme')) {
+        const numeroBambini = conteggiClassi.reduce((somma, valore) => somma + valore, 0);
+        for (let classe = 1; classe <= 5; classe += 1) {
+            const bambini = conteggiClassi[classe - 1];
+            const celiaci = Number(document.querySelector(`[data-sabor-field="celiaci_classe_${classe}"]`)?.value || 0);
+            const intolleranti = Number(document.querySelector(`[data-sabor-field="intolleranti_classe_${classe}"]`)?.value || 0);
+            if (![bambini, celiaci, intolleranti].every(value => Number.isInteger(value) && value >= 0) ||
+                celiaci > bambini || intolleranti > bambini) {
+                messaggio.textContent = `Controlla i conteggi della ${classe}ª elementare: i celiaci e gli intolleranti non possono superare il numero di bambini.`;
+                return;
+            }
+        }
     }
 
     const valoriInviati = Object.fromEntries([...campiDaSalvare].map(nomeCampo => [nomeCampo, valoreCampoSabor(nomeCampo)]));
     const payload = { ...valoriInviati };
+    if (document.body.classList.contains('sabor-class-counts-theme') && [1, 2, 3, 4, 5].some(classe =>
+        campiDaSalvare.has(`bambini_classe_${classe}`))) {
+        payload.numero_bambini = conteggiClassi.reduce((somma, valore) => somma + valore, 0);
+    }
 
     saborSalvataggioInCorso = true;
     let salvataggioRiuscito = false;
@@ -5759,10 +5846,11 @@ async function salvaSaborMerenda() {
         const { error } = await sb.from('sabor_incontri').update(payload).eq('id_incontro', saborIncontroCorrente.id_incontro);
         if (error) {
             console.error('Errore salvataggio dati merenda:', error);
+            const tutteColonne = [...SABOR_COLONNE_MERENDA, ...SABOR_COLONNE_CONTEGGI];
             const schemaDaAggiornare = error.code === 'PGRST204' &&
-                SABOR_COLONNE_MERENDA.some(nomeCampo => (error.message || '').includes(nomeCampo));
+                tutteColonne.some(nomeCampo => (error.message || '').includes(nomeCampo));
             messaggio.textContent = schemaDaAggiornare
-                ? 'Database non aggiornato: esegui db_migration_merenda_sabor.sql nel SQL Editor di Supabase.'
+                ? 'Database non aggiornato: applica supabase/migrations/20261126200000_sabor_class_food_data.sql in Supabase, poi ricarica questa pagina.'
                 : 'Salvataggio non riuscito. Controlla la connessione e riprova.';
             return;
         }
@@ -5900,11 +5988,47 @@ document.addEventListener('click', (e) => {
     if (deleteNoticeButton) eliminaAvvisoAdminSabor(deleteNoticeButton.dataset.saborAvvisoDelete);
 });
 
+async function inizializzaPaginaMerendaSabor() {
+    const dataInput = document.getElementById('saborDataInput');
+    if (!dataInput) return;
+    dataInput.value = normalizzaDataSabato(formattaDataISO(new Date()));
+    dataInput.addEventListener('change', async () => {
+        dataInput.value = normalizzaDataSabato(dataInput.value);
+        if (saborCampiModificati.size && !confirm('Ci sono modifiche non salvate. Cambiare data e scartarle?')) {
+            dataInput.value = saborIncontroCorrente?.data || normalizzaDataSabato(formattaDataISO(new Date()));
+            return;
+        }
+        if (saborAutoSaveTimer) clearTimeout(saborAutoSaveTimer);
+        saborAutoSaveTimer = null;
+        saborCampiModificati.clear();
+        await sincronizzaSaborIncontro();
+    });
+    await caricaSaborIncontro(dataInput.value);
+    avviaSincronizzazioneSabor();
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
     const dataInput = document.getElementById('saborDataInput');
     if (!dataInput) return; // non siamo sulla pagina sabato_oratorio
 
     if (document.getElementById('saborIncontriAdminBody')) return;
+    if (document.body.classList.contains('sabor-merenda-theme')) {
+        dataInput.value = normalizzaDataSabato(formattaDataISO(new Date()));
+        dataInput.addEventListener('change', async () => {
+            dataInput.value = normalizzaDataSabato(dataInput.value);
+            if (saborCampiModificati.size && !confirm('Ci sono modifiche non salvate. Cambiare data e scartarle?')) {
+                dataInput.value = saborIncontroCorrente?.data || normalizzaDataSabato(formattaDataISO(new Date()));
+                return;
+            }
+            if (saborAutoSaveTimer) clearTimeout(saborAutoSaveTimer);
+            saborAutoSaveTimer = null;
+            saborCampiModificati.clear();
+            await sincronizzaSaborIncontro();
+        });
+        await caricaSaborIncontro(dataInput.value);
+        avviaSincronizzazioneSabor();
+        return;
+    }
     dataInput.value = normalizzaDataSabato(formattaDataISO(new Date()));
     dataInput.addEventListener('change', async () => {
         dataInput.value = normalizzaDataSabato(dataInput.value);

@@ -127,6 +127,31 @@
   color: var(--accent, #ff8c1a);
 }
 
+body.sabor-theme .push-notifications-panel,
+body.sabor-theme .push-guide-dialog {
+  border-color: #4a3a7a;
+  background: #1c1440;
+  color: #f3efff;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.58);
+}
+
+body.sabor-theme .push-notifications-status {
+  color: #c9bfff;
+}
+
+body.sabor-theme .push-notifications-button {
+  background: #8b7bf0;
+  color: #140b28;
+}
+
+body.sabor-theme .push-guide-first-step {
+  background: rgba(139, 123, 240, 0.14);
+}
+
+body.sabor-theme .push-guide-note {
+  color: #b7aaff;
+}
+
 .push-guide-actions {
   display: flex;
   flex-wrap: wrap;

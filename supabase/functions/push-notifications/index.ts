@@ -1,3 +1,4 @@
+/// <reference path="../types.d.ts" />
 import { createClient } from "npm:@supabase/supabase-js@2";
 import webpush from "npm:web-push@3.6.7";
 
@@ -7,6 +8,12 @@ const vapidPublicKey = Deno.env.get("VAPID_PUBLIC_KEY");
 const vapidPrivateKey = Deno.env.get("VAPID_PRIVATE_KEY");
 const vapidSubject = Deno.env.get("VAPID_SUBJECT");
 const allowedOrigin = Deno.env.get("APP_ORIGIN");
+const allowedOrigins = new Set([
+    ...(Deno.env.get("APP_ORIGINS") || "").split(","),
+    allowedOrigin || "",
+    "http://127.0.0.1:5500",
+    "http://localhost:5500"
+].map(origin => origin.trim().replace(/\/+$/, "")).filter(Boolean));
 const webhookSecret = Deno.env.get("PUSH_WEBHOOK_SECRET");
 const supabase = supabaseUrl && serviceRoleKey
     ? createClient(supabaseUrl, serviceRoleKey, {
@@ -32,16 +39,37 @@ type PushMessage = {
     targetAnimatorId?: number;
 };
 
+type PushSubscriptionRow = {
+    id: string;
+    endpoint: string;
+    p256dh: string;
+    auth: string;
+    preferences: Partial<Record<PushCategory, boolean>> | null;
+    id_animatore: number | null;
+};
+
+type GameManagerRow = {
+    id_animatore: number;
+    giorno_gioco: string;
+    nome_gioco: string;
+};
+
+function corsHeaders(origin: string) {
+    const headers = new Headers({
+        "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-push-webhook-secret",
+        "Access-Control-Allow-Methods": "POST, OPTIONS",
+        "Vary": "Origin"
+    });
+    if (allowedOrigins.has(origin)) headers.set("Access-Control-Allow-Origin", origin);
+    return headers;
+}
+
 function jsonResponse(body: unknown, status: number, origin = "") {
+    const headers = corsHeaders(origin);
+    headers.set("Content-Type", "application/json");
     return new Response(JSON.stringify(body), {
         status,
-        headers: {
-            "Content-Type": "application/json",
-            "Access-Control-Allow-Origin": origin,
-            "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-push-webhook-secret",
-            "Access-Control-Allow-Methods": "POST, OPTIONS",
-            "Vary": "Origin"
-        }
+        headers
     });
 }
 
@@ -127,13 +155,13 @@ async function deliverPush(
 
     const expiredIds: string[] = [];
     let delivered = 0;
-    const subscribed = (subscriptions || []).filter(subscription => {
+    const subscribed = ((subscriptions || []) as PushSubscriptionRow[]).filter((subscription: PushSubscriptionRow) => {
         const preferences = { ...defaultPreferences, ...(subscription.preferences || {}) } as Record<PushCategory, boolean>;
         return preferences[message.category] !== false &&
             (targetAnimatorId === undefined || Number(subscription.id_animatore) === targetAnimatorId) &&
             (!suppressIfPreferenceEnabled || preferences[suppressIfPreferenceEnabled] !== true);
     });
-    const results = await Promise.allSettled(subscribed.map(async subscription => {
+    const results = await Promise.allSettled(subscribed.map(async (subscription: PushSubscriptionRow) => {
         try {
             await webpush.sendNotification({
                 endpoint: subscription.endpoint,
@@ -149,7 +177,7 @@ async function deliverPush(
         }
     }));
 
-    const rejected = results.filter(result => result.status === "rejected");
+    const rejected = results.filter((result: PromiseSettledResult<unknown>) => result.status === "rejected");
     if (rejected.length) console.error(`${rejected.length} invii push non completati.`);
 
     if (expiredIds.length) {
@@ -211,13 +239,13 @@ async function notifyAssignedGameManagers(record: Record<string, unknown>, opera
     }
 
     await Promise.all((managers || [])
-        .filter(manager => {
+        .filter((manager: GameManagerRow) => {
             const assignedGame = normalizeText(manager.nome_gioco);
             return normalizeText(manager.giorno_gioco) === activityDay &&
                 assignedGame &&
                 (activityName.includes(assignedGame) || assignedGame.includes(activityName));
         })
-        .map(manager => deliverPush({
+        .map((manager: GameManagerRow) => deliverPush({
             title: operation === "UPDATE" ? "Gioco GREST aggiornato" : "Gioco GREST programmato",
             body: activityBody,
             url: "./index.html",
@@ -314,18 +342,11 @@ async function sendPush(payload: Record<string, unknown>) {
     return response;
 }
 
-Deno.serve(async request => {
+Deno.serve(async (request: Request) => {
     const origin = request.headers.get("Origin") || "";
     if (request.method === "OPTIONS") {
-        if (!allowedOrigin || origin !== allowedOrigin) return new Response(null, { status: 403 });
-        return new Response("ok", {
-            headers: {
-                "Access-Control-Allow-Origin": allowedOrigin,
-                "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-push-webhook-secret",
-                "Access-Control-Allow-Methods": "POST, OPTIONS",
-                "Vary": "Origin"
-            }
-        });
+        if (!allowedOrigins.has(origin)) return new Response(null, { status: 403, headers: { "Vary": "Origin" } });
+        return new Response(null, { status: 204, headers: corsHeaders(origin) });
     }
 
     if (request.method !== "POST") return jsonResponse({ error: "Metodo non supportato." }, 405, origin);
@@ -340,11 +361,11 @@ Deno.serve(async request => {
         }
     }
 
-    if (!allowedOrigin || origin !== allowedOrigin) {
+    if (!allowedOrigins.has(origin)) {
         return jsonResponse({ error: "Origine non autorizzata." }, 403);
     }
     if (!request.headers.get("apikey")) {
-        return jsonResponse({ error: "Chiave applicazione non valida." }, 401, allowedOrigin);
+        return jsonResponse({ error: "Chiave applicazione non valida." }, 401, origin);
     }
 
     try {

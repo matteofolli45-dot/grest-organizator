@@ -1,6 +1,4 @@
 (() => {
-    const SUPABASE_URL = 'https://gjoxvtqcmqmnunewcsgg.supabase.co';
-    const SUPABASE_KEY = 'sb_publishable_liOVczDXHXYACezbKqzGyA_NFMy0DeG';
     const DEVICE_ID_KEY = 'grest_push_device_id_v1';
     const PREFERENCES_KEY = 'grest_push_preferences_v1';
     const DISMISSED_KEY = 'grest_push_prompt_dismissed_v1';
@@ -70,11 +68,11 @@
     }
 
     async function invokePushFunction(action, data = {}) {
-        if (!window.supabase?.createClient) {
+        const client = window.grestSupabaseClient;
+        if (!client?.functions?.invoke) {
             throw new Error('La libreria Supabase non è disponibile.');
         }
 
-        const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         const { data: result, error } = await client.functions.invoke(FUNCTION_NAME, {
             body: { action, ...data }
         });
